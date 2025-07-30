@@ -35,11 +35,12 @@ try {
 }
 
 try {
-  const adminRoutes = require('./routes/admin');
+  const adminRoutes = require('./routes/admin'); // ✅ define it here
   app.use('/api/admin', adminRoutes);
 } catch (err) {
   console.error("🔥 Crash in /api/admin:", err.message);
 }
+
 
 const aiRoutes = require('./routes/cryptoAi'); // ✅ NEW
 app.use('/api/ai', aiRoutes); // ✅ NEW
