@@ -5,7 +5,7 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5050;
-const adminRoutes = require('./routes/admin');
+
 
 const path = require('path');
 app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -19,15 +19,27 @@ app.use(express.json());
 app.use(express.static('public'));
 
 // ✅ Mount auth routes
-const authRoutes = require('./routes/auth');
-app.use('/api/auth', authRoutes);
+// ✅ Replace your old route mounting with this:
+try {
+  const authRoutes = require('./routes/auth');
+  app.use('/api/auth', authRoutes);
+} catch (err) {
+  console.error("🔥 Crash in /api/auth:", err.message);
+}
 
-app.get('/test-direct', (req, res) => {
-  res.send('✅ Direct route is working!');
-});
+try {
+  const userRoutes = require('./routes/user');
+  app.use('/api/user', userRoutes);
+} catch (err) {
+  console.error("🔥 Crash in /api/user:", err.message);
+}
 
-const userRoutes = require('./routes/user');
-app.use('/api/user', userRoutes);
+try {
+  const adminRoutes = require('./routes/admin');
+  app.use('/api/admin', adminRoutes);
+} catch (err) {
+  console.error("🔥 Crash in /api/admin:", err.message);
+}
 
 const aiRoutes = require('./routes/cryptoAi'); // ✅ NEW
 app.use('/api/ai', aiRoutes); // ✅ NEW
