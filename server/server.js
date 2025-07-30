@@ -41,12 +41,12 @@ app.use(express.static('public'));
 //  console.error("🔥 Crash in /api/admin:", err.message);
 //}
 
-try {
-  const aiRoutes = require('./routes/cryptoAi');
-  app.use('/api/ai', aiRoutes);
-} catch (err) {
-  console.error("🔥 Crash in /api/ai:", err.message);
-}
+//try {
+//  const aiRoutes = require('./routes/cryptoAi');
+//  app.use('/api/ai', aiRoutes);
+//} catch (err) {
+//  console.error("🔥 Crash in /api/ai:", err.message);
+//}
 
 
 // MongoDB connection
