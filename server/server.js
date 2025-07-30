@@ -82,6 +82,19 @@ app.get('/api/price/:id', async (req, res) => {
 //  res.sendFile(path.join(__dirname, '..', 'public', 'login.html'));
 //});
 
+const path = require('path');
+const fullPath = path.join(__dirname, '../public', 'index.html');
+
+app.get('*', (req, res) => {
+  res.sendFile(fullPath, err => {
+    if (err) {
+      console.error("❌ Fallback route error:", err.message);
+      res.status(500).send('Internal Server Error');
+    }
+  });
+});
+
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
