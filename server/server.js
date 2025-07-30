@@ -20,12 +20,12 @@ app.use(express.static('public'));
 
 // ✅ Mount auth routes
 // ✅ Replace your old route mounting with this:
-try {
-  const authRoutes = require('./routes/auth');
-  app.use('/api/auth', authRoutes);
-} catch (err) {
-  console.error("🔥 Crash in /api/auth:", err.message);
-}
+//try {
+//  const authRoutes = require('./routes/auth');
+//  app.use('/api/auth', authRoutes);
+//} catch (err) {
+//  console.error("🔥 Crash in /api/auth:", err.message);
+//}
 
 //try {
 //  const userRoutes = require('./routes/user');
