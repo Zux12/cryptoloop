@@ -64,3 +64,7 @@ app.use('/api/admin', adminRoutes); // ✅ This should be present
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'login.html'));
 });
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
