@@ -82,9 +82,8 @@ app.get('/api/price/:id', async (req, res) => {
 //  res.sendFile(path.join(__dirname, '..', 'public', 'login.html'));
 //});
 
-const path = require('path');
-const fs = require('fs');
 
+const fs = require('fs');
 const fallbackPath = path.join(__dirname, '..', 'public', 'index.html');
 
 app.get('*', (req, res) => {
@@ -100,6 +99,7 @@ app.get('*', (req, res) => {
     res.status(404).send('Fallback file not found');
   }
 });
+
 
 
 
