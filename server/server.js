@@ -20,33 +20,33 @@ app.use(express.static('public'));
 
 // ✅ Mount auth routes
 // ✅ Replace your old route mounting with this:
-//try {
-//  const authRoutes = require('./routes/auth');
-//  app.use('/api/auth', authRoutes);
-//} catch (err) {
-//  console.error("🔥 Crash in /api/auth:", err.message);
-//}
+try {
+  const authRoutes = require('./routes/auth');
+  app.use('/api/auth', authRoutes);
+} catch (err) {
+  console.error("🔥 Crash in /api/auth:", err.message);
+}
 
-//try {
-//  const userRoutes = require('./routes/user');
-//  app.use('/api/user', userRoutes);
-//} catch (err) {
-//  console.error("🔥 Crash in /api/user:", err.message);
-//}
+try {
+  const userRoutes = require('./routes/user');
+  app.use('/api/user', userRoutes);
+} catch (err) {
+  console.error("🔥 Crash in /api/user:", err.message);
+}
 
-//try {
-//  const adminRoutes = require('./routes/admin');
-//  app.use('/api/admin', adminRoutes);
-//} catch (err) {
-//  console.error("🔥 Crash in /api/admin:", err.message);
-//}
+try {
+  const adminRoutes = require('./routes/admin');
+  app.use('/api/admin', adminRoutes);
+} catch (err) {
+  console.error("🔥 Crash in /api/admin:", err.message);
+}
 
-//try {
-//  const aiRoutes = require('./routes/cryptoAi');
-//  app.use('/api/ai', aiRoutes);
-//} catch (err) {
-//  console.error("🔥 Crash in /api/ai:", err.message);
-//}
+try {
+  const aiRoutes = require('./routes/cryptoAi');
+  app.use('/api/ai', aiRoutes);
+} catch (err) {
+  console.error("🔥 Crash in /api/ai:", err.message);
+}
 
 
 // MongoDB connection
