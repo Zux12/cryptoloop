@@ -84,13 +84,15 @@ app.get('/api/price/:id', async (req, res) => {
 
 
 const fs = require('fs');
+const path = require('path');
+
 const fallbackPath = path.join(__dirname, '..', 'public', 'index.html');
 
-app.get('*', (req, res) => {
+app.get('/:path(*)', (req, res) => {
   if (fs.existsSync(fallbackPath)) {
-    res.sendFile(fallbackPath, (err) => {
+    res.sendFile(fallbackPath, err => {
       if (err) {
-        console.error("❌ Error sending fallback index.html:", err.message);
+        console.error("❌ Fallback route error:", err.message);
         res.status(500).send('Internal Server Error');
       }
     });
