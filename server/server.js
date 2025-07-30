@@ -35,15 +35,19 @@ try {
 }
 
 try {
-  const adminRoutes = require('./routes/admin'); // ✅ define it here
+  const adminRoutes = require('./routes/admin');
   app.use('/api/admin', adminRoutes);
 } catch (err) {
   console.error("🔥 Crash in /api/admin:", err.message);
 }
 
+try {
+  const aiRoutes = require('./routes/cryptoAi');
+  app.use('/api/ai', aiRoutes);
+} catch (err) {
+  console.error("🔥 Crash in /api/ai:", err.message);
+}
 
-const aiRoutes = require('./routes/cryptoAi'); // ✅ NEW
-app.use('/api/ai', aiRoutes); // ✅ NEW
 
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URI)
