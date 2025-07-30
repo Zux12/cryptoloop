@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Panel | CryptoLoop</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen px-6 py-6 font-sans">
+
+  <!-- Top bar with logo and logout -->
+  <div class="flex justify-between items-center mb-6">
+    <div class="flex items-center gap-3">
+      <img src="images/logo.png" alt="CryptoLoop Logo" class="h-10 w-auto" />
+      <h1 class="text-2xl font-bold">CryptoLoop Admin</h1>
+    </div>
+    <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-semibold">
+      🔐 Logout
+    </button>
+  </div>
+
+  <!-- Status message -->
+  <p id="status-msg" class="text-center text-sm text-green-400 mb-4"></p>
+
+<!-- Buy Requests Table -->
+<h2 class="text-lg font-bold mt-6 mb-2">🟢 Pending Buy Requests</h2>
+<div class="overflow-x-auto">
+  <table class="min-w-full text-sm bg-gray-800">
+    <thead class="bg-gray-700 text-white">
+      <tr>
+        <th class="p-2 border">User</th>
+        <th class="p-2 border">Symbol</th>
+        <th class="p-2 border">USD</th>
+        <th class="p-2 border">Amount</th>
+        <th class="p-2 border">Timestamp</th>
+        <th class="p-2 border text-center">Actions</th>
+      </tr>
+    </thead>
+    <tbody id="admin-buy-request-body" class="text-white"></tbody>
+  </table>
+</div>
+
+
+<!-- Sell Table -->
+<h2 class="text-xl font-bold mt-10 mb-4">🛒 Pending Sell Requests</h2>
+<div class="overflow-x-auto border border-gray-700 rounded">
+  <table class="min-w-full text-sm bg-gray-800">
+    <thead class="bg-gray-700 text-white">
+      <tr>
+        <th class="p-2 border">User</th>
+        <th class="p-2 border">Symbol</th>
+        <th class="p-2 border">Amount</th>
+        <th class="p-2 border">Timestamp</th>
+        <th class="p-2 border">Status</th>
+        <th class="p-2 border">Status Timestamp</th>
+        <th class="p-2 border text-center">Actions</th>
+      </tr>
+    </thead>
+    <tbody id="admin-sell-body" class="text-white"></tbody>
+  </table>
+</div>
+
+
+
+  <script>
+    const statusMsg = document.getElementById('status-msg');
+    const tableBody = document.getElementById('admin-request-body');
+
+    async function fetchRequests() {
+    const token = localStorage.getItem('token');
+    console.log("🚀 Calling fetchRequests...");
+
+    try {
+      const res = await fetch('/api/admin/buy-requests', {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error("❌ Failed to load buy requests:", errText);
+        return;
+      }
+
+      const data = await res.json();
+      console.log("📦 Loaded buy requests:", data);
+
+      if (!Array.isArray(data)) {
+        console.warn("⚠️ Unexpected response format:", data);
+        return;
+      }
+
+      renderBuyTable(data);  // ✅ This stays the same
+
+    } catch (err) {
+      console.error("❌ Exception in fetchRequests:", err);
+    }
+  }
+
+
+  
+    function renderBuyTable(requests) {
+  const buyTable = document.getElementById('admin-buy-request-body');
+  buyTable.innerHTML = '';
+
+  if (!requests.length) {
+    buyTable.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 p-4">No pending buy requests</td></tr>';
+    return;
+  }
+
+  requests.forEach(req => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td class="p-2 border">${req.user}</td>
+      <td class="p-2 border">${req.symbol}</td>
+      <td class="p-2 border">$${req.usd}</td>
+      <td class="p-2 border">${req.amount}</td>
+      <td class="p-2 border">${new Date(req.timestamp).toLocaleString()}</td>
+      <td class="p-2 border text-center space-x-2">
+        <button onclick="handleAction('${req._id}', 'approve')" class="text-green-400 hover:text-green-600 font-semibold">✅ Approve</button>
+        <button onclick="handleAction('${req._id}', 'reject')" class="text-red-400 hover:text-red-600 font-semibold">❌ Reject</button>
+      </td>
+    `;
+    buyTable.appendChild(row);
+  });
+}
+
+
+    async function handleAction(id, action) {
+      const token = localStorage.getItem('token');
+      const endpoint = `/api/admin/${action}`;
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify({ id })
+      });
+
+      if (res.ok) {
+        statusMsg.textContent = `✅ Request ${action}d successfully`;
+        fetchRequests();
+      } else {
+        statusMsg.textContent = '❌ Failed to update request';
+      }
+
+      setTimeout(() => statusMsg.textContent = '', 3000);
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      window.location.href = '/login.html';
+    }
+
+    fetchRequests();
+
+    console.log("📜 Raw token:", localStorage.getItem('token'));
+
+    async function fetchSellRequests() {
+  console.log("🚀 Calling fetchSellRequests...");
+
+  const token = localStorage.getItem('token'); // ✅ GET THE TOKEN
+
+  const res = await fetch('/api/admin/sell-requests', {
+    headers: {
+      Authorization: 'Bearer ' + token
+    }
+  });
+  const data = await res.json();
+  console.log("📦 Loaded sell requests:", data); // Add this temporarily
+  renderSellTable(data);
+}
+
+
+
+
+
+function renderSellTable(requests) {
+  const body = document.getElementById('admin-sell-body');
+  body.innerHTML = '';
+  if (!requests.length) {
+    body.innerHTML = '<tr><td colspan="5" class="text-center text-gray-400 p-4">No pending sell requests</td></tr>';
+    return;
+  }
+
+  requests.forEach(req => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+    <td class="p-2 border">${req.user}</td>
+  <td class="p-2 border">${req.symbol}</td>
+  <td class="p-2 border">${req.amount}</td>
+  <td class="p-2 border">${new Date(req.timestamp).toLocaleString()}</td>
+  <td class="p-2 border">${req.status}</td>
+  <td class="p-2 border">${req.statusTimestamp ? new Date(req.statusTimestamp).toLocaleString() : '-'}</td>
+  <td class="p-2 border text-center space-x-2">
+    ${req.status === 'Pending' || req.status === 'Frozen' ? `
+      <button onclick="updateSellStatus('${req._id}', 'approve')" class="text-green-400 hover:text-green-600 font-semibold">✅ Approve</button>
+      <button onclick="updateSellStatus('${req._id}', 'reject')" class="text-red-400 hover:text-red-600 font-semibold">❌ Reject</button>
+      <button onclick="updateSellStatus('${req._id}', 'frozen')" class="text-yellow-400 hover:text-yellow-600 font-semibold">🧊 Freeze</button>
+      <button onclick="updateSellStatus('${req._id}', 'transfer')" class="text-blue-400 hover:text-blue-600 font-semibold">💸 Transfer</button>
+    ` : '—'}
+  </td>
+`;
+    body.appendChild(row);
+  });
+}
+
+//update sell status
+async function updateSellStatus(id, status) {
+  const token = localStorage.getItem('token');
+  const res = await fetch('/api/admin/sell-update', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + token
+    },
+    body: JSON.stringify({ id, status })
+  });
+
+  const data = await res.json();
+  console.log("📡 Admin received SellRequests:", data);  // ✅ Add this line
+  if (res.ok) {
+    statusMsg.textContent = `✅ ${status} successful`;
+    fetchSellRequests(); // re-render table
+  } else {
+    statusMsg.textContent = `❌ ${data.msg || 'Update failed'}`;
+  }
+
+  setTimeout(() => statusMsg.textContent = '', 3000);
+}
+
+
+
+
+
+
+async function handleSellAction(id, action) {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`/api/admin/${action}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ id })
+  });
+
+  if (res.ok) {
+    statusMsg.textContent = `✅ Sell ${action.replace('sell-', '')}d successfully`;
+    fetchSellRequests();
+  } else {
+    statusMsg.textContent = '❌ Failed to update sell request';
+  }
+
+  setTimeout(() => statusMsg.textContent = '', 3000);
+}
+
+
+fetchRequests();
+fetchSellRequests();
+    
+
+console.log("🚀 Calling fetchSellRequests...");
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CryptoLoop Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/luxon"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon"></script>
+  <style>
+    .tab { display: none; }
+    .tab.active { display: block; }
+  </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen px-4">
+
+  <!-- Header with logo and user -->
+  <div class="mb-6">
+    <div class="flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <img src="images/logo.png" alt="CryptoLoop Logo" class="h-10 w-auto" />
+      </div>
+      <div id="welcome-user" class="text-sm text-green-400"></div>
+    </div>
+
+    <!-- Centered title -->
+    <h1 class="text-3xl font-bold text-center mt-4">CryptoLoop Dashboard</h1>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <nav class="flex justify-center space-x-2 mb-6">
+    <button data-tab="market" class="tab-btn bg-green-500 text-black font-semibold px-4 py-2 rounded">📈 Market</button>
+    <button data-tab="buy" class="tab-btn bg-gray-700 px-4 py-2 rounded">💰 Buy</button>
+    <button data-tab="sell" class="tab-btn bg-gray-700 px-4 py-2 rounded">📤 Sell</button>
+    <button data-tab="wallet" class="tab-btn bg-gray-700 px-4 py-2 rounded">👛 Wallet</button>
+    <button data-tab="chart" class="tab-btn bg-gray-700 px-4 py-2 rounded">📊 Chart</button>
+    <button data-tab="ai-sim" class="tab-btn bg-gray-700 px-4 py-2 rounded">📊 CryptoAI</button>
+
+    <button id="logout" class="bg-red-600 px-4 py-2 rounded">🔐 Logout</button>
+  </nav>
+
+  <!-- Centered Total Portfolio Value -->
+  <div id="total-value" class="text-center text-3xl text-green-400 font-bold my-6">
+    Total Portfolio Value: $0.00
+  </div>
+  <div id="cryptoai-value" class="text-center text-xl text-cyan-400 font-semibold mb-4">
+    CryptoAI Simulated Value: Loading...
+  </div>
+  
+
+  <!-- 📈 Market Overview -->
+  <div id="market" class="tab active px-6 py-6">
+    <h2 class="text-2xl font-semibold mb-4">Market Overview</h2>
+
+
+      
+
+    <!-- Add coin input -->
+    <div class="flex items-center mb-4 gap-3">
+      <input
+        id="new-coin-input"
+        type="text"
+        placeholder="Add coin by symbol (e.g. BTC, ETH)"
+        class="p-2 rounded-md bg-gray-800 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-400 w-full"
+      />
+      <button
+        id="add-coin"
+        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-semibold transition"
+      >
+        Add Coin
+      </button>
+    </div>
+
+    <!-- Market Table -->
+    <div class="overflow-x-auto rounded-lg border border-gray-700">
+      <table id="market-table" class="min-w-full text-sm text-left bg-gray-700 text-white">
+        <thead class="bg-gray-800 text-white">
+          <tr>
+            <th class="p-2 border">Name</th>
+            <th class="p-2 border">Symbol</th>
+            <th class="p-2 border">Price (USD)</th>
+            <th class="p-2 border">24h Change (%)</th>
+            <th class="p-2 border">Trend</th>
+            <th class="p-2 border text-center">Remove</th>
+          </tr>
+        </thead>
+        <tbody class="bg-gray-700 text-white text-sm"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 💰 Buy Tab -->
+  <div id="buy" class="tab px-6 py-6">
+    <h2 class="text-xl font-semibold mb-4">💰 Buy Crypto</h2>
+    <form id="buy-form" class="space-y-3">
+      <input type="text" id="buy-symbol" placeholder="Symbol (e.g. BTC)" class="w-full p-2 rounded bg-gray-800 border border-gray-600">
+      <input type="number" id="buy-amount" placeholder="Amount in USD" class="w-full p-2 rounded bg-gray-800 border border-gray-600">
+      <button id="buy-submit" type="submit" disabled class="bg-green-600 opacity-50 px-4 py-2 rounded font-semibold">
+        Submit
+      </button>
+      
+    </form>
+    <div id="buy-result" class="mt-3 text-sm"></div>
+  
+
+
+    <h3 class="text-lg font-semibold mt-8 mb-2">Buy History</h3>
+    <table class="min-w-full text-sm bg-gray-700 text-white border border-gray-600 mt-2">
+      <thead class="bg-gray-800">
+        <tr>
+          <th class="p-2 border">Symbol</th>
+          <th class="p-2 border">USD</th>
+          <th class="p-2 border">Crypto Amount</th>
+          <th class="p-2 border">Status</th>
+          <th class="p-2 border">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="buy-history-body" class="text-sm"></tbody>
+    </table>
+  </div>
+
+  <!-- 📤 Sell Tab -->
+  <div id="sell" class="tab px-6 py-6">
+    <h2 class="text-xl font-semibold mb-4">📤 Sell Crypto</h2>
+
+<!--additional sell tab new section-->
+<table class="min-w-full text-sm bg-gray-700 text-white border border-gray-600 mt-4">
+    <thead class="bg-gray-800">
+      <tr>
+        <th class="p-2 border">Symbol</th>
+        <th class="p-2 border">Owned</th>
+        <th class="p-2 border">USD Spent</th>
+        <th class="p-2 border">Timestamp</th>
+        <th class="p-2 border">Action</th>
+        <th class="p-2 border">Status</th>
+      </tr>
+    </thead>
+    <tbody id="sell-table-body"></tbody>
+  </table>
+
+<!-- 📜 Past Sell History -->
+<h2 class="text-xl font-semibold mt-10 mb-3">📜 Past Sell History</h2>
+<div class="overflow-x-auto border border-gray-700 rounded mb-10">
+  <table class="min-w-full text-sm bg-gray-800">
+    <thead class="bg-gray-700 text-white">
+      <tr>
+        <th class="p-2 border">Symbol</th>
+        <th class="p-2 border">Amount</th>
+        <th class="p-2 border">Status</th>
+        <th class="p-2 border">Timestamp</th>
+        <th class="p-2 border">Transaction ID</th>
+      </tr>
+    </thead>
+    <tbody id="sell-history-body" class="text-white"></tbody>
+  </table>
+</div>
+
+
+
+
+    <form id="sell-form" class="space-y-3">
+<!--
+          <input type="text" id="sell-symbol" placeholder="Symbol (e.g. BTC)" class="w-full p-2 rounded bg-gray-800 border border-gray-600">
+      <input type="number" id="sell-amount" placeholder="Amount in USD" class="w-full p-2 rounded bg-gray-800 border border-gray-600">
+      <button type="submit" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-semibold">Submit</button>
+-->
+    
+    </form>
+    <div id="sell-result" class="mt-3 text-sm"></div>
+  </div>
+
+
+
+
+
+
+  
+
+
+
+
+  <!-- 👛 Wallet Tab -->
+  <div id="wallet" class="tab px-6 py-6">
+    <h2 class="text-2xl font-semibold mb-4">👛 My Wallet</h2>
+    <div class="overflow-x-auto rounded-lg border border-gray-700">
+      <table id="wallet-table" class="min-w-full text-sm text-left bg-gray-700 text-white">
+        <thead class="bg-gray-800 text-white">
+          <tr>
+            <th class="p-2 border">Coin</th>
+            <th class="p-2 border">Symbol</th>
+            <th class="p-2 border">Owned</th>
+            <th class="p-2 border">Price (USD)</th>
+            <th class="p-2 border">Value</th>
+            <th class="p-2 border">% Portfolio</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 📊 Chart Tab -->
+  <div id="chart" class="tab px-6 py-6">
+    <h2 class="text-2xl font-semibold mb-4">📊 Live Chart</h2>
+    <div id="selected-coin-name" class="text-xl text-white mb-2"></div>
+    <button onclick="resetZoom()" class="mb-4 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium">
+        🔄 Reset Zoom
+      </button>
+      
+    <div class="mb-4 flex gap-2">
+        <button onclick="setChartRange('1')" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm">24h</button>
+        <button onclick="setChartRange('7')" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm">7d</button>
+        <button onclick="setChartRange('30')" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm">30d</button>
+      </div>
+    
+      
+
+    <canvas id="cryptoChart" height="200"></canvas>
+  </div>
+
+      <!--CryptoAi-->
+      <div id="ai-sim" class="tab">
+        <h2 class="text-2xl font-bold text-center mb-4">SmartSim AI Trading</h2>
+        <div class="overflow-x-auto bg-gray-800 rounded-xl p-4 shadow-md">
+          <table class="min-w-full text-sm text-left">
+            <thead>
+              <tr class="text-gray-300 border-b border-gray-600">
+                <th class="px-4 py-2">Time</th>
+                <th class="px-4 py-2">Action</th>
+                <th class="px-4 py-2">Sentiment</th>
+                <th class="px-4 py-2">% Change</th>
+                <th class="px-4 py-2">New Value (USD)</th>
+              </tr>
+            </thead>
+            <tbody id="ai-sim-table" class="text-white">
+              <!-- Simulation rows will go here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+  <!-- Main JS -->
+  <script src="main.js"></script>
+</body>
+</html>

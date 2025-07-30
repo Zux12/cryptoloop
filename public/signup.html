@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign Up | CryptoLoop</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#0f172a] text-white flex items-center justify-center min-h-screen font-sans">
+  <div class="w-full max-w-md px-8 py-10 bg-[#0f1b2c] rounded-xl shadow-lg">
+    <!-- Logo -->
+    <div class="text-center mb-6">
+      <img src="images/logo.png" alt="CryptoLoop Logo" class="max-w-[160px] mx-auto mb-4" />
+    
+      <p class="text-lg mt-2 font-semibold">Sign Up</p>
+    </div>
+
+    <!-- Signup Form -->
+    <form id="signup-form" class="space-y-4">
+      <div>
+        <label for="name" class="block text-sm mb-1">Name</label>
+        <input id="name" type="text" required class="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-cyan-400" />
+      </div>
+
+      <div>
+        <label for="email" class="block text-sm mb-1">Email</label>
+        <input id="email" type="email" required class="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-cyan-400" />
+      </div>
+
+      <div>
+        <label for="password" class="block text-sm mb-1">Password</label>
+        <input id="password" type="password" required class="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-cyan-400" />
+      </div>
+
+      <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-2 rounded-md font-semibold transition">Create Account</button>
+    </form>
+
+    <!-- Footer Links -->
+    <div class="text-center text-sm mt-6">
+      <a href="login.html" class="text-cyan-400 hover:underline">Already have an account? Log in</a>
+    </div>
+
+    <!-- Error -->
+    <p id="error-msg" class="text-red-500 mt-4 text-center text-sm"></p>
+  </div>
+
+  <script>
+    const form = document.getElementById('signup-form');
+    const errorMsg = document.getElementById('error-msg');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const name = document.getElementById('name').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('Account created successfully! Please log in.');
+        window.location.href = 'login.html';
+      } else {
+        errorMsg.textContent = data.msg || 'Signup failed';
+      }
+    });
+  </script>
+</body>
+</html>

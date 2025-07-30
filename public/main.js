@@ -1,0 +1,873 @@
+console.log("📦 main.js loaded");
+
+
+// 🔐 Redirect if not logged in
+if (!localStorage.getItem('token')) {
+  window.location.href = 'login.html';
+}
+
+// Global Variables
+let coinList = [];
+let watchlist = JSON.parse(localStorage.getItem('watchlist')) || ['bitcoin', 'ethereum'];
+let aiSimInterval;
+let aiSimTable;
+let aiThoughtsBox;
+
+// Handle Tab Switching
+document.querySelectorAll('nav button[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('nav button[data-tab]').forEach(b => b.classList.remove('active'));
+  
+      const tabId = btn.getAttribute('data-tab');
+      document.getElementById(tabId).classList.add('active');
+      btn.classList.add('active');
+  
+      // Hook into CryptoAI tab
+      if (tabId === 'ai-sim') {
+        setTimeout(startAiSimulation, 500); // Wait for TPV to load
+      } else {
+        clearInterval(aiSimInterval);
+      }
+    });
+  });
+  
+
+// Logout
+document.getElementById('logout').addEventListener('click', () => {
+  localStorage.removeItem('token');
+  window.location.href = 'login.html';
+});
+
+// Load user name
+async function loadUserName() {
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/auth/me', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    document.getElementById('welcome-user').textContent = `Welcome, ${data.name} 👋`;
+  } catch (err) {
+    console.error('Error loading user:', err);
+  }
+}
+
+// Load Market Data
+async function loadMarketData() {
+  const table = document.querySelector('#market-table tbody');
+  if (!watchlist.length) {
+    table.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400">No coins in watchlist</td></tr>';
+    return;
+  }
+
+  try {
+    const ids = watchlist.join(',');
+    const res = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}`);
+    const prices = await res.json();
+    table.innerHTML = prices.map(coin => `
+      <tr>
+      <td class="p-2 border text-blue-400 cursor-pointer hover:underline" onclick="setChartCoin('${coin.id}', '${coin.name}')">${coin.name}</td>
+
+        <td class="p-2 border">${coin.symbol.toUpperCase()}</td>
+        <td class="p-2 border">$${coin.current_price}</td>
+        <td class="p-2 border ${coin.price_change_percentage_24h >= 0 ? 'text-green-400' : 'text-red-400'}">${coin.price_change_percentage_24h.toFixed(2)}%</td>
+        <td class="p-2 border">${coin.price_change_percentage_24h >= 0 ? '📈' : '📉'}</td>
+        <td class="p-2 border text-center">
+        <button onclick="removeCoin('${coin.symbol}')" class="text-red-500">✖</button></td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    console.error('Error loading market data:', err);
+    table.innerHTML = '<tr><td colspan="6" class="text-center text-red-500">Failed to load market data</td></tr>';
+  }
+}
+
+// Load Wallet
+async function loadWallet() {
+    const token = localStorage.getItem('token');
+    const table = document.querySelector('#wallet-table tbody');
+  
+    try {
+      const res1 = await fetch('/api/user/wallet', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+  
+      const data = await res1.json();
+      const wallet = data.wallet || {};
+      console.log("👜 Loaded wallet from backend:", wallet);
+  
+      const symbols = Object.keys(wallet);
+      if (!symbols.length) {
+        table.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400">No holdings</td></tr>';
+        return;
+      }
+  
+      const symbolToId = {
+        btc: 'bitcoin',
+        eth: 'ethereum',
+        usdt: 'tether',
+        bnb: 'binancecoin',
+        ada: 'cardano',
+        xrp: 'ripple',
+        doge: 'dogecoin',
+        sol: 'solana'
+      };
+  
+      const ids = symbols.map(sym => symbolToId[sym]);
+      console.log("🪙 CoinGecko IDs:", ids);
+  
+      const res2 = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids.join(',')}`);
+      const prices = await res2.json();
+  
+      if (!prices.length) throw new Error("🛑 No prices returned from CoinGecko");
+  
+      let totalValue = 0;
+      const rows = prices.map(coin => {
+        const symbol = coin.symbol.toLowerCase();
+        const amount = wallet[symbol] || 0;
+        const value = amount * coin.current_price;
+        totalValue += value;
+        return `
+          <tr>
+            <td class="p-2 border">${coin.name}</td>
+            <td class="p-2 border">${symbol.toUpperCase()}</td>
+            <td class="p-2 border">${amount}</td>
+            <td class="p-2 border">$${coin.current_price}</td>
+            <td class="p-2 border">$${value.toFixed(2)}</td>
+            <td class="p-2 border">${((value / totalValue) * 100).toFixed(2)}%</td>
+          </tr>
+        `;
+      });
+  
+      window.totalPortfolioValue = totalValue;
+      document.getElementById('total-value').textContent = `Total Portfolio Value: $${totalValue.toFixed(2)}`;
+      table.innerHTML = rows.join('');
+    } catch (err) {
+      console.error('❌ Error loading wallet:', err);
+      table.innerHTML = '<tr><td colspan="6" class="text-center text-red-500">Error loading wallet</td></tr>';
+    }
+  }
+  
+
+// TODO: Insert startAiSimulation() and simulateTrade() with clean logic later...
+async function startAiSimulation() {
+    const base = window.totalPortfolioValue;
+  
+    if (!base || base <= 0) {
+      document.getElementById("cryptoai-value").textContent = "CryptoAI Profit: (not enough data)";
+      return;
+    }
+  
+    let simulatedValue = base;
+    const saved = await loadCryptoAIStateFromDB(base);
+    if (saved) simulatedValue = saved;
+  
+    updateCryptoAIValueDisplay(simulatedValue, base);
+  
+    aiSimTable = document.getElementById("ai-sim-table");
+    aiThoughtsBox = document.getElementById("ai-thoughts") || createThoughtBox();
+    aiSimTable.innerHTML = "";
+  
+    const thoughts = [
+      "Analyzing ETH trends...",
+      "High confidence in BTC rebound",
+      "Monitoring whale activity...",
+      "Slight dip — holding assets",
+      "Scanning for entry points...",
+      "News suggests caution — minor sell-off"
+    ];
+  
+    const sentiments = [
+      { mood: "Bullish", range: [0.05, 0.15], weight: 60 },
+      { mood: "Neutral", range: [0.00, 0.05], weight: 30 },
+      { mood: "Bearish", range: [-0.05, 0.00], weight: 10 }
+    ];
+  
+    function pickSentiment() {
+      const totalWeight = sentiments.reduce((sum, s) => sum + s.weight, 0);
+      let rand = Math.random() * totalWeight;
+      for (let s of sentiments) {
+        if (rand < s.weight) return s;
+        rand -= s.weight;
+      }
+      return sentiments[0];
+    }
+  
+    async function simulateTrade() {
+      const sentiment = pickSentiment();
+      const percent = (Math.random() * (sentiment.range[1] - sentiment.range[0]) + sentiment.range[0]);
+      const direction = Math.random() < 0.5 ? -1 : 1;
+      const changePercent = direction === -1 && sentiment.mood === "Bullish" ? percent * 0.5 : percent;
+      const finalPercent = sentiment.mood === "Bearish" ? -Math.abs(changePercent) : Math.abs(changePercent);
+  
+      simulatedValue *= 1 + finalPercent / 100;
+      const action = Math.random() > 0.5 ? "Buy" : "Sell";
+  
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td class="px-4 py-2">${new Date().toLocaleTimeString()}</td>
+        <td class="px-4 py-2">${action}</td>
+        <td class="px-4 py-2">${sentiment.mood}</td>
+        <td class="px-4 py-2 ${finalPercent >= 0 ? 'text-green-400' : 'text-red-400'}">${finalPercent.toFixed(2)}%</td>
+        <td class="px-4 py-2">$${simulatedValue.toFixed(2)}</td>
+      `;
+      aiSimTable.prepend(row);
+      if (aiSimTable.rows.length > 20) aiSimTable.deleteRow(20);
+  
+      updateCryptoAIValueDisplay(simulatedValue, base);
+      updateAIThought(thoughts);
+  
+      await saveCryptoAIStateToDB(simulatedValue);
+    }
+  
+    clearInterval(aiSimInterval);
+    aiSimInterval = setInterval(simulateTrade, 5000);
+  }
+  
+  function updateCryptoAIValueDisplay(current, base) {
+    const display = document.getElementById("cryptoai-value");
+    const profit = current - base;
+    const percent = (profit / base * 100).toFixed(2);
+  
+    display.innerHTML = `
+      CryptoAI Profit: $${profit.toFixed(2)} 
+      <span class="${profit >= 0 ? 'text-green-400' : 'text-red-400'}">
+        (${profit >= 0 ? '↑' : '↓'} ${percent}%)
+      </span>
+    `;
+  }
+  
+  function updateAIThought(thoughts) {
+    if (!aiThoughtsBox) return;
+    const randomThought = thoughts[Math.floor(Math.random() * thoughts.length)];
+    aiThoughtsBox.textContent = `🧠 ${randomThought}`;
+  }
+  
+  function createThoughtBox() {
+    const box = document.createElement("div");
+    box.id = "ai-thoughts";
+    box.className = "text-center text-sm text-yellow-300 mt-2 italic";
+    document.getElementById("ai-sim").appendChild(box);
+    return box;
+  }
+  
+//setchartcoin function
+let currentChartSymbol = 'bitcoin';
+let currentChartName = 'Bitcoin';
+
+async function setChartCoin(symbol, name) {
+  currentChartSymbol = symbol;
+  currentChartName = name;
+
+  document.getElementById("selected-coin-name").textContent = `${name}`;
+  await loadChartData('1'); // Load 24h by default
+  document.querySelector('[data-tab="chart"]').click(); // Switch to Chart tab
+}
+
+let chart;
+
+async function loadChartData(days) {
+  try {
+    const res = await fetch(`https://api.coingecko.com/api/v3/coins/${currentChartSymbol}/market_chart?vs_currency=usd&days=${days}`);
+    const data = await res.json();
+
+    const labels = data.prices.map(p => new Date(p[0]).toLocaleTimeString());
+    const values = data.prices.map(p => p[1]);
+
+    const ctx = document.getElementById('cryptoChart').getContext('2d');
+
+    if (chart) chart.destroy(); // reset chart if exists
+
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: `${currentChartName} (${days}d)`,
+          data: values,
+          borderColor: 'green',
+          borderWidth: 2,
+          fill: false
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: true }
+        },
+        scales: {
+          y: {
+            ticks: { color: 'white' },
+            grid: { color: 'rgba(255,255,255,0.1)' }
+          },
+          x: {
+            ticks: { color: 'white' },
+            grid: { color: 'rgba(255,255,255,0.1)' }
+          }
+        }
+      }
+    });
+  } catch (err) {
+    console.error("Error loading chart data:", err);
+  }
+}
+
+console.log("🧾 Rendering Buy History");
+
+console.log("🧾 Rendering Buy History at", new Date().toLocaleTimeString());
+
+async function renderBuyHistory() {
+    console.log("📡 Calling /api/user/buy/history");
+  
+    const token = localStorage.getItem("token");
+    const body = document.getElementById("buy-history-body");
+    if (!body) return;
+  
+    body.innerHTML = ''; // ✅ Clear before inserting new rows
+
+    console.log("🖱️ Attaching edit/delete listeners...");
+
+    setTimeout(() => {
+      // DELETE button
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
+          console.log("🗑️ Deleting ID:", id);
+    
+          if (confirm('❗ Are you sure you want to delete this buy request?')) {
+            try {
+              const res = await fetch(`/api/user/buy/${id}`, {
+                method: 'DELETE',
+                headers: {
+                  Authorization: `Bearer ${localStorage.getItem('token')}`
+                }
+              });
+              const result = await res.json();
+              console.log("✅ Deleted:", result);
+              renderBuyHistory(); // Refresh
+            } catch (err) {
+              console.error("❌ Delete failed:", err);
+            }
+          }
+        });
+      });
+    
+      // EDIT button
+      document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
+          console.log("✏️ Editing ID:", id);
+    
+          const newUsd = prompt("✏️ Enter new USD amount:");
+          if (newUsd && !isNaN(newUsd) && parseFloat(newUsd) > 0) {
+            try {
+              const res = await fetch(`/api/user/buy/${id}`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({ usd: parseFloat(newUsd) })
+              });
+              const result = await res.json();
+              console.log("✅ Edited:", result);
+              renderBuyHistory(); // Refresh
+            } catch (err) {
+              console.error("❌ Edit failed:", err);
+            }
+          }
+        });
+      });
+    }, 200); // small delay to ensure buttons exist
+    
+  
+
+
+    try {
+      const res = await fetch('/api/user/buy/history', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+  
+      const history = await res.json();
+     // body.innerHTML = ''; // ✅ Clear before inserting new rows
+  
+      if (!Array.isArray(history) || history.length === 0) {
+        body.innerHTML = '<tr><td colspan="5" class="text-center text-gray-400">No buy history yet</td></tr>';
+        return;
+      }
+  
+      body.innerHTML = history.map(entry => `
+        <tr>
+          <td class="p-2 border">${entry.symbol.toUpperCase()}</td>
+          <td class="p-2 border">$${entry.usd}</td>
+          <td class="p-2 border">${entry.amount ? Number(entry.amount).toFixed(6) : '-'}</td>
+          <td class="p-2 border">${entry.status}</td>
+          <td>
+      ${entry.status === 'Pending' ? `
+        <button class="edit-btn bg-yellow-500 text-white px-2 py-1 rounded mr-1" data-id="${entry._id}">Edit</button>
+        <button class="delete-btn bg-red-600 text-white px-2 py-1 rounded" data-id="${entry._id}">Delete</button>
+      ` : '-'}
+
+      </td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      console.error("❌ Error loading buy history:", err);
+      body.innerHTML = '<tr><td colspan="5" class="text-center text-red-500">Failed to load buy history</td></tr>';
+    }
+  }
+ 
+//added due to multiple occurance in table
+  
+
+
+
+async function renderApprovedBuysForSelling() {
+    const token = localStorage.getItem("token");
+    const table = document.getElementById("sell-table-body");
+  
+    try {
+      const res = await fetch('/api/user/approved-buys', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+  
+      const buys = await res.json();
+      table.innerHTML = buys.map(buy => `
+        <tr>
+          <td class="p-2 border">${buy.symbol.toUpperCase()}</td>
+          <td class="p-2 border">${buy.amount.toFixed(6)}</td>
+          <td class="p-2 border">$${buy.usd.toFixed(2)}</td>
+          <td class="p-2 border">${new Date(buy.timestamp).toLocaleString()}</td>
+          <td class="p-2 border text-center">
+            <button class="sell-btn bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded" data-id="${buy._id}" data-symbol="${buy.symbol}" data-max="${buy.amount}">
+              Sell
+            </button>
+          </td>
+          <td class="p-2 border text-center">Pending</td>
+        </tr>
+      `).join('');
+  
+      attachSellHandlers();
+    } catch (err) {
+      console.error("❌ Error loading approved buy history:", err);
+      table.innerHTML = `<tr><td colspan="6" class="text-center text-red-500">Error loading approved buys</td></tr>`;
+    }
+  }
+
+  
+
+
+
+  function attachSellHandlers() {
+    document.querySelectorAll('.sell-btn').forEach(button => {
+      button.addEventListener('click', async () => {
+        console.log("🟢 Sell button clicked:", { id, symbol, maxAmount });
+
+        const id = button.dataset.id;
+        const symbol = button.dataset.symbol;
+        const maxAmount = parseFloat(button.dataset.max);
+  
+        const amount = parseFloat(prompt(`Enter amount to sell (Max: ${maxAmount}):`, maxAmount));
+        if (isNaN(amount) || amount <= 0 || amount > maxAmount) {
+          alert("❌ Invalid amount.");
+          return;
+        }
+  
+        const token = localStorage.getItem("token");
+        try {
+          const res = await fetch('/api/user/sell', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ id, symbol, amount })
+          });
+  
+          console.log("📨 Sent to /api/user/sell:", { id, symbol, amount }); // ⬅️ HERE
+          if (!res.ok) {
+            console.warn("❌ Sell request failed:", await res.text());
+            return;
+          }
+
+          const data = await res.json();
+          alert(data.msg || "Sell request submitted.");
+          renderApprovedBuysForSelling(); // refresh table
+        } catch (err) {
+          console.error("❌ Failed to submit sell:", err);
+          alert("Error submitting sell request.");
+        }
+      });
+    });
+  }
+  
+
+
+
+  async function renderSellTable() {
+    console.log("🟡 Running renderSellTable...");
+  
+    const token = localStorage.getItem("token");
+    const body = document.querySelector("#sell-table-body");
+    if (!body) return;
+  
+    try {
+      const [walletRes, historyRes] = await Promise.all([
+        fetch('/api/user/wallet', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/user/buy/history', { headers: { Authorization: `Bearer ${token}` } })
+      ]);
+  
+      const walletData = await walletRes.json();
+      const wallet = walletData.wallet || {};
+      console.log("📦 Loaded wallet from backend:", wallet);
+  
+      const history = (await historyRes.json()).filter(e => e.status === 'Approved');
+      console.log("📦 SellTable received buy history:", history.length, "records");
+  
+      body.innerHTML = ''; // Clear table body
+  
+      history.forEach(entry => {
+        const symbol = entry.symbol.toLowerCase();
+        const owned = wallet[symbol] || 0;
+  
+        console.log("🧾 Processing Approved entry:", `"${symbol}"`, owned);
+  
+        const row = document.createElement('tr');
+  
+        row.innerHTML = `
+          <td class="p-2 border">${symbol.toUpperCase()}</td>
+          <td class="p-2 border">${owned.toFixed(6)}</td>
+          <td class="p-2 border">${entry.usd ? `$${entry.usd}` : '-'}</td>
+          <td class="p-2 border">${new Date(entry.timestamp).toLocaleString()}</td>
+          <td class="p-2 border text-center">
+            <button class="sell-btn bg-yellow-500 text-white px-2 py-1 rounded" data-id="${entry._id}" data-symbol="${symbol}" data-amount="${owned}">Sell</button>
+          </td>
+          <td class="p-2 border">Pending</td>
+        `;
+  
+        body.appendChild(row);
+      });
+  
+      // 🔁 Attach event listeners AFTER the table is populated
+      document.querySelectorAll(".sell-btn").forEach(button => {
+        button.addEventListener("click", async () => {
+          const id = button.dataset.id;
+          const symbol = button.dataset.symbol;
+          const maxAmount = Number(button.dataset.amount);
+  
+          console.log("⚡ Sell button clicked:", { id, symbol, maxAmount });
+  
+          const input = prompt(`Enter amount to sell (max ${maxAmount}):`);
+          if (!input || isNaN(input)) {
+            alert("❌ Invalid amount.");
+            return;
+          }
+  
+          const value = Number(input);
+          if (value > maxAmount) {
+            alert("❌ Cannot sell more than you own.");
+            return;
+          }
+  
+          const res = await fetch('/api/user/sell', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ id, symbol, amount: value })
+          });
+  
+          const data = await res.json();
+          console.log("✅ Sell request submitted:", data);
+          alert(data.msg || 'Sell request submitted!');
+        });
+      });
+  
+    } catch (err) {
+      console.error("❌ Error rendering Sell Table:", err);
+      body.innerHTML = `<tr><td colspan="6" class="text-red-500 text-center p-4">Error loading Sell Table</td></tr>`;
+    }
+  }
+  
+  
+  
+  
+
+
+
+
+
+
+
+
+
+// Initialize on load
+window.onload = function () {
+  loadUserName();
+  loadMarketData();
+  loadWallet();
+  renderBuyHistory(); // ✅ Add this
+  renderSellTable(); // ✅ Now added here
+  loadSellHistoryTable();  // ✅ THIS LINE
+  renderApprovedBuysForSelling(); // optional for Sell tab
+  clearAndBindBuyFormOnce(); // ✅ one and only buy form bind
+  document.getElementById("buy-symbol").addEventListener("input", checkBuyFormValidity);
+document.getElementById("buy-amount").addEventListener("input", checkBuyFormValidity);
+
+};
+
+(() => {
+    const oldForm = document.getElementById('buy-form');
+  
+    // ✅ Fully clone and replace the form node to drop all existing listeners
+    const newForm = oldForm.cloneNode(true);
+    oldForm.replaceWith(newForm);
+  
+   
+  })();
+  
+
+//add coin
+// 🔄 Add coin logic
+document.getElementById("add-coin").addEventListener("click", () => {
+    const input = document.getElementById("new-coin-input");
+    const symbol = input.value.trim().toLowerCase();
+    if (!symbol) return;
+  
+    let coins = JSON.parse(localStorage.getItem("marketCoins") || "[]");
+  
+    if (!coins.includes(symbol)) {
+      coins.push(symbol);
+      localStorage.setItem("marketCoins", JSON.stringify(coins));
+      loadMarketData(); // refresh market
+    }
+  
+    input.value = ""; // clear input field
+  });
+  
+//end add coin  
+  
+async function loadCryptoAIStateFromDB(base) {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch('/api/ai/load', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const saved = await res.json();
+      if (saved?.simulatedValue && saved?.lastUpdated) {
+        const elapsed = Math.floor((Date.now() - new Date(saved.lastUpdated)) / 5000);
+        let value = saved.simulatedValue;
+        for (let i = 0; i < elapsed; i++) {
+          value *= 1 + (Math.random() * 0.004 - 0.001); // small passive gain
+        }
+        return value;
+      }
+      return base;
+    } catch (err) {
+      console.warn("Failed to load from MongoDB. Using base.");
+      return base;
+    }
+  }
+  
+  async function saveCryptoAIStateToDB(simulatedValue) {
+    try {
+      const token = localStorage.getItem("token");
+      await fetch('/api/ai/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          simulatedValue,
+          lastUpdated: new Date().toISOString()
+        })
+      });
+    } catch (err) {
+      console.warn("Failed to save AI state to MongoDB.");
+    }
+  }
+  
+  const buyForm = document.getElementById('buy-form');
+if (buyForm && !buyForm.hasSubmitListener) {
+  buyForm.hasSubmitListener = true;
+
+
+}
+
+ window.addEventListener('DOMContentLoaded', () => {
+    const buyForm = document.getElementById('buy-form');
+    if (!buyForm) return;
+  
+    
+  });
+  
+
+  const buySymbolInput = document.getElementById("buy-symbol");
+const buyAmountInput = document.getElementById("buy-amount");
+const buySubmitBtn = document.getElementById("buy-submit");
+
+function checkBuyFormValidity() {
+  const symbol = buySymbolInput.value.trim();
+  const amount = parseFloat(buyAmountInput.value);
+  const valid = symbol && !isNaN(amount) && amount > 0;
+
+  buySubmitBtn.disabled = !valid;
+  buySubmitBtn.classList.toggle("opacity-50", !valid);
+}
+
+// Attach live input validation
+buySymbolInput.addEventListener("input", checkBuyFormValidity);
+buyAmountInput.addEventListener("input", checkBuyFormValidity);
+
+
+//paste this Once
+
+let buyFormBound = false;
+
+function setupBuyForm() {
+  if (buyFormBound) return;
+  buyFormBound = true;
+
+  const buyForm = document.getElementById('buy-form');
+  if (!buyForm) return;
+
+ 
+}
+
+function clearAndBindBuyFormOnce() {
+    const oldForm = document.getElementById("buy-form");
+    const newForm = oldForm.cloneNode(true); // clears old listeners
+    oldForm.replaceWith(newForm);
+  
+    newForm.addEventListener("submit", async function (e) {
+      e.preventDefault();
+  
+      const symbol = document.getElementById('buy-symbol').value.trim().toLowerCase();
+      const usd = parseFloat(document.getElementById('buy-amount').value);
+      const resultBox = document.getElementById('buy-result');
+  
+      console.log("🔍 Submitted symbol:", symbol);
+      console.log("🔍 Submitted USD:", usd);
+  
+      if (!symbol || isNaN(usd) || usd <= 0) {
+        resultBox.textContent = "❌ Invalid input.";
+        return;
+      }
+  
+      const token = localStorage.getItem("token");
+  
+      try {
+        const res = await fetch('/api/user/buy', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ symbol, usd })
+        });
+  
+        const data = await res.json();
+        resultBox.textContent = `✅ Buy request submitted. Status: ${data.status || 'pending'}`;
+        setTimeout(renderBuyHistory, 300); // short delay for DB write
+      } catch (err) {
+        resultBox.textContent = "❌ Failed to submit buy request.";
+        console.error(err);
+      }
+    });
+  }
+  
+
+  function checkBuyFormValidity() {
+    const symbol = document.getElementById("buy-symbol").value.trim();
+    const usd = parseFloat(document.getElementById("buy-amount").value);
+    const submitBtn = document.getElementById("buy-submit");
+  
+    if (symbol && !isNaN(usd) && usd > 0) {
+      submitBtn.disabled = false;
+      submitBtn.classList.remove("opacity-50");
+    } else {
+      submitBtn.disabled = true;
+      submitBtn.classList.add("opacity-50");
+    }
+  }
+  
+
+  //function remove coin
+  function removeCoin(symbol) {
+    const coins = JSON.parse(localStorage.getItem("marketCoins") || "[]");
+    const updated = coins.filter(c => c !== symbol.toLowerCase());
+    localStorage.setItem("marketCoins", JSON.stringify(updated));
+    loadMarketData(); // refresh market
+  }
+  
+  // 🟣 Fetch and Render Sell History
+async function renderSellHistory() {
+    const token = localStorage.getItem('token');
+    const body = document.getElementById('sell-history-body');
+    if (!body) return;
+  
+    try {
+      const res = await fetch('/api/user/sell/history', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+  
+      if (!res.ok) throw new Error("❌ Failed to fetch sell history");
+  
+      const history = await res.json();
+      if (!Array.isArray(history) || !history.length) {
+        body.innerHTML = '<tr><td colspan="4" class="text-center text-gray-400 p-4">No past sell records found.</td></tr>';
+        return;
+      }
+  
+      body.innerHTML = history.map(entry => `
+        <tr>
+          <td class="p-2 border">${entry.symbol.toUpperCase()}</td>
+          <td class="p-2 border">${Number(entry.amount).toFixed(6)}</td>
+          <td class="p-2 border">${entry.status}</td>
+          <td class="p-2 border">${new Date(entry.timestamp).toLocaleString()}</td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      console.error("❌ Error loading sell history:", err.message);
+      body.innerHTML = '<tr><td colspan="4" class="text-red-400 p-4 text-center">Failed to load sell history</td></tr>';
+    }
+  }
+  
+  // 🟢 Load and render full Sell History
+async function loadSellHistoryTable() {
+    const token = localStorage.getItem("token");
+    const body = document.getElementById("sell-history-body");
+    if (!body) return;
+  
+    try {
+      const res = await fetch('/api/user/sell/history', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+  
+      const history = await res.json();
+      console.log("📜 Loaded full sell history:", history);
+  
+      if (!history.length) {
+        body.innerHTML = '<tr><td colspan="5" class="text-center text-gray-400">No sell history</td></tr>';
+        return;
+      }
+  
+      body.innerHTML = history.map(entry => `
+        <tr>
+          <td class="p-2 border">${entry.symbol.toUpperCase()}</td>
+          <td class="p-2 border">${entry.amount}</td>
+          <td class="p-2 border">${entry.status}</td>
+          <td class="p-2 border">${new Date(entry.timestamp).toLocaleString()}</td>
+          <td class="p-2 border">${entry._id}</td>
+        </tr>
+      `).join('');
+  
+    } catch (err) {
+      console.error("❌ Error loading sell history:", err);
+      body.innerHTML = '<tr><td colspan="5" class="text-center text-red-500">Error loading sell history</td></tr>';
+    }
+  }
+  
