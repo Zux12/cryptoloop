@@ -7,6 +7,11 @@ const app = express();
 const PORT = process.env.PORT || 5050;
 const adminRoutes = require('./routes/admin');
 
+const path = require('path');
+app.use(express.static(path.join(__dirname, '..', 'public')));
+
+
+
 
 // Middleware
 app.use(cors());
@@ -53,5 +58,9 @@ app.get('/api/price/:id', async (req, res) => {
 
 
 app.use('/api/admin', adminRoutes); // ✅ This should be present
-app.use(express.static('public')); // ✅ Serve frontend files
 
+
+// Serve frontend for any unknown route
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'login.html'));
+});
