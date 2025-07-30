@@ -82,17 +82,18 @@ app.get('/api/price/:id', async (req, res) => {
 //  res.sendFile(path.join(__dirname, '..', 'public', 'login.html'));
 //});
 
-const path = require('path');
-const fullPath = path.join(__dirname, '../public', 'index.html');
+const fs = require('fs');
+const fallbackPath = path.join(__dirname, '..', 'public', 'index.html');
 
 app.get('*', (req, res) => {
-  res.sendFile(fullPath, err => {
-    if (err) {
-      console.error("❌ Fallback route error:", err.message);
-      res.status(500).send('Internal Server Error');
-    }
-  });
+  if (fs.existsSync(fallbackPath)) {
+    res.sendFile(fallbackPath);
+  } else {
+    console.error("❌ index.html not found at fallbackPath:", fallbackPath);
+    res.status(404).send('Fallback HTML not found');
+  }
 });
+
 
 
 app.listen(PORT, () => {
