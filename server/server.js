@@ -74,7 +74,7 @@ app.get('/api/price/:id', async (req, res) => {
 });
 
 
-app.use('/api/admin', adminRoutes); // ✅ This should be present
+// app.use('/api/admin', adminRoutes); // ✅ This should be present
 
 
 // Serve frontend for any unknown route
