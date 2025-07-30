@@ -34,12 +34,12 @@ try {
   console.error("🔥 Crash in /api/user:", err.message);
 }
 
-try {
-  const adminRoutes = require('./routes/admin');
-  app.use('/api/admin', adminRoutes);
-} catch (err) {
-  console.error("🔥 Crash in /api/admin:", err.message);
-}
+//try {
+//  const adminRoutes = require('./routes/admin');
+//  app.use('/api/admin', adminRoutes);
+//} catch (err) {
+//  console.error("🔥 Crash in /api/admin:", err.message);
+//}
 
 try {
   const aiRoutes = require('./routes/cryptoAi');
