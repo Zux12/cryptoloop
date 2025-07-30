@@ -27,12 +27,12 @@ try {
   console.error("🔥 Crash in /api/auth:", err.message);
 }
 
-try {
-  const userRoutes = require('./routes/user');
-  app.use('/api/user', userRoutes);
-} catch (err) {
-  console.error("🔥 Crash in /api/user:", err.message);
-}
+//try {
+//  const userRoutes = require('./routes/user');
+//  app.use('/api/user', userRoutes);
+//} catch (err) {
+//  console.error("🔥 Crash in /api/user:", err.message);
+//}
 
 //try {
 //  const adminRoutes = require('./routes/admin');
