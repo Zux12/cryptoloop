@@ -8,7 +8,34 @@ if (!localStorage.getItem('token')) {
 
 // Global Variables
 let coinList = [];
-let watchlist = JSON.parse(localStorage.getItem('watchlist')) || ['bitcoin', 'ethereum'];
+let watchlist = JSON.parse(localStorage.getItem('watchlist')) || [
+  'bitcoin',
+  'ethereum',
+  'solana',
+  'bnb',
+  'ripple',
+  'cardano',
+  'dogecoin',
+  'shiba-inu',
+  'avalanche-2',
+  'tron',
+  'polkadot',
+  'polygon',
+  'litecoin',
+  'chainlink',
+  'uniswap',
+  'internet-computer',
+  'stellar',
+  'aptos',
+  'vechain',
+  'render-token',
+  'the-graph',
+  'arbitrum',
+  'optimism',
+  'cosmos',
+  'near'
+];
+
 let aiSimInterval;
 let aiSimTable;
 let aiThoughtsBox;
