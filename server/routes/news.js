@@ -8,7 +8,7 @@ router.get('/', async (req, res) => {
   try {
     const response = await axios.get('https://cryptopanic.com/api/v1/posts/', {
       params: {
-        auth_token: '7fefcc81128e8a8bdaf0e28bae0c0b38102624d4',
+        auth_token: process.env.CRYPTOPANIC_KEY,
         public: true
       }
     });
