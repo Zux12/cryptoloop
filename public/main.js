@@ -619,9 +619,40 @@ async function renderApprovedBuysForSelling() {
     }
   }
   
+
+
+
   
   
-  
+async function loadCryptoNews() {
+  const newsBox = document.getElementById('crypto-news');
+  if (!newsBox) return;
+
+  try {
+    const lastFetch = localStorage.getItem('cryptoNewsFetchedAt');
+    const now = Date.now();
+    if (lastFetch && now - parseInt(lastFetch) < 86400000) return; // only once per day
+
+    const res = await fetch('https://api.coingecko.com/api/v3/status_updates');
+    const data = await res.json();
+    const updates = data.status_updates.slice(0, 5); // limit to 5
+
+    newsBox.innerHTML = updates.map(n => `
+      <li class="bg-gray-800 p-3 rounded-lg shadow-md hover:bg-gray-700 transition">
+        <a href="${n.article_url || '#'}" target="_blank" class="block text-sm text-blue-400 hover:underline">
+          <span class="font-semibold text-white">${n.project.name || 'Update'}</span>: ${n.description.slice(0, 100)}...
+        </a>
+      </li>
+    `).join('');
+
+    localStorage.setItem('cryptoNewsFetchedAt', now.toString());
+  } catch (err) {
+    console.error("❌ Failed to load crypto news:", err);
+    newsBox.innerHTML = '<li class="text-red-400">Failed to load news.</li>';
+  }
+}
+
+
 
 
 
@@ -636,6 +667,7 @@ window.onload = function () {
   loadUserName();
   loadMarketData();
   loadWallet();
+  loadCryptoNews();
   renderBuyHistory(); // ✅ Add this
   renderSellTable(); // ✅ Now added here
   loadSellHistoryTable();  // ✅ THIS LINE
