@@ -98,7 +98,9 @@ app.use((req, res, next) => {
 });
 
 // for cryptonews
+console.log("📍 Registering /api/news route");
 app.use('/api/news', require('./routes/news'));
+
 
 
 
