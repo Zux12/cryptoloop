@@ -6,7 +6,7 @@ router.get('/', async (req, res) => {
   try {
     const { data } = await axios.get('https://cryptopanic.com/api/v1/posts/', {
       params: {
-        auth_token: 'demo', // Replace with your real key if needed
+        auth_token: '7fefcc81128e8a8bdaf0e28bae0c0b38102624d4',
         public: true
       }
     });
