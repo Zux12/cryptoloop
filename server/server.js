@@ -97,6 +97,8 @@ app.use((req, res, next) => {
   });
 });
 
+// for cryptonews
+app.use('/api/news', require('./routes/news'));
 
 
 
