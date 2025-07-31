@@ -206,11 +206,11 @@ async function startAiSimulation() {
       "News suggests caution — minor sell-off"
     ];
   
-    const sentiments = [
-      { mood: "Bullish", range: [0.05, 0.15], weight: 60 },
-      { mood: "Neutral", range: [0.00, 0.05], weight: 30 },
-      { mood: "Bearish", range: [-0.05, 0.00], weight: 10 }
-    ];
+  const sentiments = [
+  { mood: "Bullish", range: [0.005, 0.015], weight: 60 },  
+  { mood: "Neutral", range: [-0.002, 0.005], weight: 20 }, 
+  { mood: "Bearish", range: [-0.015, -0.005], weight: 20 } 
+];
   
     function pickSentiment() {
       const totalWeight = sentiments.reduce((sum, s) => sum + s.weight, 0);
@@ -688,7 +688,7 @@ async function loadCryptoAIStateFromDB(base) {
         const elapsed = Math.floor((Date.now() - new Date(saved.lastUpdated)) / 5000);
         let value = saved.simulatedValue;
         for (let i = 0; i < elapsed; i++) {
-          value *= 1 + (Math.random() * 0.004 - 0.001); // small passive gain
+          value *= 1 + (Math.random() * 0.0007 - 0.0002); // small passive gain
         }
         return value;
       }
