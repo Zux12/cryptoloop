@@ -631,16 +631,16 @@ async function loadCryptoNews() {
   try {
     const lastFetch = localStorage.getItem('cryptoNewsFetchedAt');
     const now = Date.now();
-    if (lastFetch && now - parseInt(lastFetch) < 86400000) return; // only once per day
+    if (lastFetch && now - parseInt(lastFetch) < 86400000) return; // once per day
 
-    const res = await fetch('https://api.coingecko.com/api/v3/status_updates');
+    const res = await fetch("https://cryptopanic.com/api/v1/posts/?auth_token=demo&public=true");
     const data = await res.json();
-    const updates = data.status_updates.slice(0, 5); // limit to 5
+    const articles = data.results.slice(0, 5);
 
-    newsBox.innerHTML = updates.map(n => `
+    newsBox.innerHTML = articles.map(article => `
       <li class="bg-gray-800 p-3 rounded-lg shadow-md hover:bg-gray-700 transition">
-        <a href="${n.article_url || '#'}" target="_blank" class="block text-sm text-blue-400 hover:underline">
-          <span class="font-semibold text-white">${n.project.name || 'Update'}</span>: ${n.description.slice(0, 100)}...
+        <a href="${article.url}" target="_blank" class="block text-sm text-blue-400 hover:underline">
+          <span class="font-semibold text-white">${article.domain || 'CryptoPanic'}</span>: ${article.title.slice(0, 100)}...
         </a>
       </li>
     `).join('');
@@ -651,6 +651,7 @@ async function loadCryptoNews() {
     newsBox.innerHTML = '<li class="text-red-400">Failed to load news.</li>';
   }
 }
+
 
 
 
