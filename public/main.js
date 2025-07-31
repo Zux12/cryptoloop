@@ -9,6 +9,7 @@ if (!localStorage.getItem('token')) {
 // Global Variables
 let coinList = [];
 let watchlist = JSON.parse(localStorage.getItem('watchlist')) || [
+  'tether',
   'bitcoin',
   'ethereum',
   'solana',
