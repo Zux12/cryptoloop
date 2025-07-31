@@ -628,33 +628,47 @@ async function loadCryptoNews() {
   const newsBox = document.getElementById('crypto-news');
   if (!newsBox) return;
 
+  // show loading state
+  newsBox.innerHTML = '<li class="text-gray-400 italic">Loading news...</li>';
+
   try {
     const lastFetch = localStorage.getItem('cryptoNewsFetchedAt');
+    const cached = localStorage.getItem('cryptoNewsCached');
     const now = Date.now();
-    if (lastFetch && now - parseInt(lastFetch) < 86400000) return; // once/day
 
-    const res = await fetch("/api/news");
-
-    if (!res.ok || !res.headers.get("content-type")?.includes("application/json")) {
-      throw new Error("❌ Response is not valid JSON");
+    // ✅ If within 24 hours, serve cached news
+    if (cached && lastFetch && now - parseInt(lastFetch) < 86400000) {
+      const articles = JSON.parse(cached);
+      renderNews(articles, newsBox);
+      return;
     }
 
+    // ✅ Otherwise, fetch fresh
+    const res = await fetch("/api/news");
     const articles = await res.json();
 
-    newsBox.innerHTML = articles.map(article => `
-      <li class="bg-gray-800 p-3 rounded-lg shadow-md hover:bg-gray-700 transition">
-        <a href="${article.url}" target="_blank" class="block text-sm text-blue-400 hover:underline">
-          <span class="font-semibold text-white">${article.domain || 'CryptoPanic'}</span>: ${article.title.slice(0, 100)}...
-        </a>
-      </li>
-    `).join('');
+    // store for reuse
+    localStorage.setItem("cryptoNewsFetchedAt", now.toString());
+    localStorage.setItem("cryptoNewsCached", JSON.stringify(articles));
 
-    localStorage.setItem('cryptoNewsFetchedAt', now.toString());
+    renderNews(articles, newsBox);
   } catch (err) {
     console.error("❌ Failed to load crypto news:", err);
     newsBox.innerHTML = '<li class="text-red-400">Failed to load news.</li>';
   }
 }
+
+//helper function for above script
+function renderNews(articles, newsBox) {
+  newsBox.innerHTML = articles.map(article => `
+    <li class="bg-gray-800 p-3 rounded-lg shadow-md hover:bg-gray-700 transition">
+      <a href="${article.url}" target="_blank" class="block text-sm text-blue-400 hover:underline">
+        <span class="font-semibold text-white">${article.source.name}</span>: ${article.title.slice(0, 100)}...
+      </a>
+    </li>
+  `).join('');
+}
+
 
 
 
