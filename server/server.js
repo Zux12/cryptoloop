@@ -83,6 +83,10 @@ app.get('/api/price/:id', async (req, res) => {
 //});
 
 
+// for cryptonews
+console.log("📍 Registering /api/news route");
+app.use('/api/news', require('./routes/news'));
+
 // ✅ Express 5-compatible wildcard fallback
 app.use((req, res, next) => {
   const fallbackPath = path.join(__dirname, '..', 'public', 'index.html');
@@ -97,9 +101,7 @@ app.use((req, res, next) => {
   });
 });
 
-// for cryptonews
-console.log("📍 Registering /api/news route");
-app.use('/api/news', require('./routes/news'));
+
 
 
 
