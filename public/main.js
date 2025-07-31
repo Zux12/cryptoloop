@@ -631,11 +631,15 @@ async function loadCryptoNews() {
   try {
     const lastFetch = localStorage.getItem('cryptoNewsFetchedAt');
     const now = Date.now();
-    if (lastFetch && now - parseInt(lastFetch) < 86400000) return; // once per day
+    if (lastFetch && now - parseInt(lastFetch) < 86400000) return; // once/day
 
     const res = await fetch("/api/news");
-    const data = await res.json();
-    const articles = data.results.slice(0, 5);
+
+    if (!res.ok || !res.headers.get("content-type")?.includes("application/json")) {
+      throw new Error("❌ Response is not valid JSON");
+    }
+
+    const articles = await res.json();
 
     newsBox.innerHTML = articles.map(article => `
       <li class="bg-gray-800 p-3 rounded-lg shadow-md hover:bg-gray-700 transition">
@@ -651,6 +655,7 @@ async function loadCryptoNews() {
     newsBox.innerHTML = '<li class="text-red-400">Failed to load news.</li>';
   }
 }
+
 
 
 
