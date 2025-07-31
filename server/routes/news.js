@@ -2,40 +2,27 @@ const express = require('express');
 const axios = require('axios');
 const router = express.Router();
 
-const CRYPTOPANIC_API_KEY = process.env.CRYPTOPANIC_KEY;
-let cachedNews = null;
-let lastFetched = 0;
+const GNEWS_API_KEY = process.env.GNEWS_API_KEY;
 
 router.get('/', async (req, res) => {
-  const now = Date.now();
-
-  // ✅ If cache is fresh (under 24h), return it
-  if (cachedNews && now - lastFetched < 86400000) {
-    console.log("🌀 Serving cached news");
-    return res.json(cachedNews);
-  }
-
   try {
-    const response = await axios.get('https://cryptopanic.com/api/v1/posts/', {
+    const { data } = await axios.get('https://gnews.io/api/v4/search', {
       params: {
-        auth_token: CRYPTOPANIC_API_KEY,
-        public: true
+        q: 'crypto OR bitcoin OR ethereum',
+        lang: 'en',
+        max: 5,
+        token: GNEWS_API_KEY
       }
     });
 
-    const results = response?.data?.results?.slice(0, 5);
-    if (!results || !Array.isArray(results)) {
-      return res.status(502).json({ error: 'Invalid data from CryptoPanic' });
+    if (!data.articles || !Array.isArray(data.articles)) {
+      return res.status(502).json({ error: 'Invalid response from GNews' });
     }
 
-    cachedNews = results;
-    lastFetched = now;
-
-    console.log("✅ Fetched new news from CryptoPanic");
-    res.json(cachedNews);
+    res.json(data.articles);
   } catch (err) {
-    console.error("❌ Failed to fetch news:", err.message);
-    res.status(500).json({ error: 'Failed to fetch crypto news' });
+    console.error("❌ GNews error:", err.message);
+    res.status(500).json({ error: 'Failed to fetch GNews' });
   }
 });
 
