@@ -207,9 +207,9 @@ async function startAiSimulation() {
     ];
   
   const sentiments = [
-  { mood: "Bullish", range: [0.005, 0.015], weight: 60 },  
-  { mood: "Neutral", range: [-0.002, 0.005], weight: 20 }, 
-  { mood: "Bearish", range: [-0.015, -0.005], weight: 20 } 
+  { mood: "Bullish", range: [0.005, 0.015], weight: 30 },  
+  { mood: "Neutral", range: [-0.002, 0.005], weight: 25 }, 
+  { mood: "Bearish", range: [-0.015, -0.005], weight: 45 } 
 ];
   
     function pickSentiment() {
