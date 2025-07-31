@@ -633,7 +633,7 @@ async function loadCryptoNews() {
     const now = Date.now();
     if (lastFetch && now - parseInt(lastFetch) < 86400000) return; // once per day
 
-    const res = await fetch("https://cryptopanic.com/api/v1/posts/?auth_token=demo&public=true");
+    const res = await fetch("/api/news");
     const data = await res.json();
     const articles = data.results.slice(0, 5);
 
