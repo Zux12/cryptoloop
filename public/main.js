@@ -206,10 +206,10 @@ async function startAiSimulation() {
       "News suggests caution — minor sell-off"
     ];
   
-  const sentiments = [
-  { mood: "Bullish", range: [0.005, 0.015], weight: 30 },  
-  { mood: "Neutral", range: [-0.002, 0.005], weight: 25 }, 
-  { mood: "Bearish", range: [-0.015, -0.005], weight: 45 } 
+const sentiments = [
+  { mood: "Bullish", range: [0.0001, 0.0003], weight: 30 },   
+  { mood: "Neutral", range: [-0.00005, 0.0001], weight: 25 }, 
+  { mood: "Bearish", range: [-0.0003, -0.0001], weight: 45 }  
 ];
   
     function pickSentiment() {
