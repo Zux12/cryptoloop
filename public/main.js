@@ -145,9 +145,10 @@ async function loadWallet() {
       };
   
      // const ids = symbols.map(sym => symbolToId[sym]);
-const ids = symbols.map(sym => symbolToId[sym]).filter(Boolean); // ✅ removes undefined
-
+const ids = symbols.map(sym => symbolToId[sym]).filter(Boolean);
 console.log("🪙 CoinGecko IDs:", ids);
+
+const table = document.querySelector('#wallet-table tbody'); // or #sell-table-body depending on tab
 
 let prices = [];
 try {
@@ -163,40 +164,36 @@ try {
 
 } catch (err) {
   console.error("❌ Error fetching CoinGecko prices:", err.message);
-  const table = document.querySelector('#wallet-table tbody'); // or sell-table depending on context
   if (table) {
     table.innerHTML = `<tr><td colspan="6" class="text-center text-red-500">${err.message}</td></tr>`;
   }
-  return; // stop rendering if prices fail
+  return;
 }
-  
-      let totalValue = 0;
-      const rows = prices.map(coin => {
-        const symbol = coin.symbol.toLowerCase();
-        const amount = wallet[symbol] || 0;
-        const value = amount * coin.current_price;
-        totalValue += value;
-        return `
-          <tr>
-            <td class="p-2 border">${coin.name}</td>
-            <td class="p-2 border">${symbol.toUpperCase()}</td>
-            <td class="p-2 border">${amount}</td>
-            <td class="p-2 border">$${coin.current_price}</td>
-            <td class="p-2 border">$${value.toFixed(2)}</td>
-            <td class="p-2 border">${((value / totalValue) * 100).toFixed(2)}%</td>
-          </tr>
-        `;
-      });
-  
-      window.totalPortfolioValue = totalValue;
-      document.getElementById('total-value').textContent = `Total Portfolio Value: $${totalValue.toFixed(2)}`;
-      table.innerHTML = rows.join('');
-    } catch (err) {
-      console.error('❌ Error loading wallet:', err);
-      table.innerHTML = '<tr><td colspan="6" class="text-center text-red-500">Error loading wallet</td></tr>';
-    }
-  }
-  
+
+let totalValue = 0;
+const rows = prices.map(coin => {
+  const symbol = coin.symbol.toLowerCase();
+  const amount = wallet[symbol] || 0;
+  const value = amount * coin.current_price;
+  totalValue += value;
+  return `
+    <tr>
+      <td class="p-2 border">${coin.name}</td>
+      <td class="p-2 border">${symbol.toUpperCase()}</td>
+      <td class="p-2 border">${amount}</td>
+      <td class="p-2 border">$${coin.current_price}</td>
+      <td class="p-2 border">$${value.toFixed(2)}</td>
+      <td class="p-2 border">${((value / totalValue) * 100).toFixed(2)}%</td>
+    </tr>
+  `;
+});
+
+window.totalPortfolioValue = totalValue;
+document.getElementById('total-value').textContent = `Total Portfolio Value: $${totalValue.toFixed(2)}`;
+if (table) {
+  table.innerHTML = rows.join('');
+}
+
 
 // TODO: Insert startAiSimulation() and simulateTrade() with clean logic later...
 async function startAiSimulation() {
