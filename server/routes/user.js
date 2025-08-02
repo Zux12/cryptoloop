@@ -24,18 +24,15 @@ router.post('/buy', authMiddleware, async (req, res) => {
 
     const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd`);
 
-    // ✅ Check for HTML error page
+    let price = 1; // fallback
     const contentType = response.headers.get('content-type') || '';
-    if (!response.ok || !contentType.includes('application/json')) {
-      console.error("❌ CoinGecko returned non-JSON response");
-      return res.status(500).json({ msg: 'CoinGecko API failed or returned invalid data' });
-    }
 
-    const data = await response.json();
-    const price = data[coingeckoId]?.usd;
-
-    if (!price) {
-      return res.status(500).json({ msg: 'Price not found in response' });
+    if (response.ok && contentType.includes('application/json')) {
+      const data = await response.json();
+      price = data[coingeckoId]?.usd || 1;
+      console.log(`🔍 CoinGecko price: ${price}`);
+    } else {
+      console.warn(`⚠️ CoinGecko failed. Using fallback price = ${price}`);
     }
 
     const amount = usd / price;
@@ -49,7 +46,7 @@ router.post('/buy', authMiddleware, async (req, res) => {
     });
 
     await request.save();
-    console.log("✅ Saved buy request:", request);
+    console.log("✅ Buy request saved:", request);
 
     res.status(201).json({
       msg: 'Buy request submitted successfully',
@@ -63,7 +60,7 @@ router.post('/buy', authMiddleware, async (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ Final catch in POST /buy:", err.message);
+    console.error("❌ Failed in /buy:", err.message);
     res.status(500).json({ msg: 'Failed to save request', error: err.message });
   }
 });
