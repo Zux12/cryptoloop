@@ -47,7 +47,7 @@ console.log("💰 Calculated price:", data[coingeckoId]?.usd);
       console.log("🧮 Calculated amount:", amount);
   
       const request = new BuyRequest({
-        userId: req.user.id,         // ✅ actual reference
+
         user: req.user.email,
         symbol,
         usd,
