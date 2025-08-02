@@ -193,7 +193,7 @@ document.getElementById('total-value').textContent = `Total Portfolio Value: $${
 if (table) {
   table.innerHTML = rows.join('');
 }
-
+    }
 
 
 // TODO: Insert startAiSimulation() and simulateTrade() with clean logic later...
