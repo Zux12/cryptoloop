@@ -34,12 +34,19 @@ router.post('/buy', authMiddleware, async (req, res) => {
       }[symbol.toLowerCase()] || symbol;
   
       const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd`);
+     
+      if (!response.ok) {
+      console.error("❌ CoinGecko API failed:", response.status);
+      return res.status(500).json({ msg: 'CoinGecko API failed' });
+      }
+
+      
       const data = await response.json();
 
       console.log("🔍 Fetching price for:", coingeckoId);
-console.log("🧾 USD amount submitted:", usd);
-console.log("🪙 CoinGecko response:", data);
-console.log("💰 Calculated price:", data[coingeckoId]?.usd);
+      console.log("🧾 USD amount submitted:", usd);
+      console.log("🪙 CoinGecko response:", data);
+      console.log("💰 Calculated price:", data[coingeckoId]?.usd);
 
       const price = data[coingeckoId]?.usd || 1;
       const amount = usd / price;
