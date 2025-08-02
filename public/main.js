@@ -145,14 +145,30 @@ async function loadWallet() {
       };
   
      // const ids = symbols.map(sym => symbolToId[sym]);
-      const ids = symbols.map(sym => symbolToId[sym]).filter(Boolean); // ✅ removes undefined
+const ids = symbols.map(sym => symbolToId[sym]).filter(Boolean); // ✅ removes undefined
 
-      console.log("🪙 CoinGecko IDs:", ids);
-  
-      const res2 = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids.join(',')}`);
-      const prices = await res2.json();
-  
-      if (!prices.length) throw new Error("🛑 No prices returned from CoinGecko");
+console.log("🪙 CoinGecko IDs:", ids);
+
+let prices = [];
+try {
+  const res2 = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids.join(',')}`);
+  const contentType = res2.headers.get("content-type") || "";
+
+  if (!res2.ok || !contentType.includes("application/json")) {
+    throw new Error(`❌ CoinGecko error: status ${res2.status}`);
+  }
+
+  prices = await res2.json();
+  if (!prices.length) throw new Error("🛑 No prices returned from CoinGecko");
+
+} catch (err) {
+  console.error("❌ Error fetching CoinGecko prices:", err.message);
+  const table = document.querySelector('#wallet-table tbody'); // or sell-table depending on context
+  if (table) {
+    table.innerHTML = `<tr><td colspan="6" class="text-center text-red-500">${err.message}</td></tr>`;
+  }
+  return; // stop rendering if prices fail
+}
   
       let totalValue = 0;
       const rows = prices.map(coin => {
