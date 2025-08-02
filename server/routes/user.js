@@ -53,6 +53,7 @@ console.log("💰 Calculated price:", data[coingeckoId]?.usd);
         usd,
         amount,
         status: 'Pending'
+        timestamp: new Date()
       });
 
       console.log("💾 Saving buy request:", { symbol, usd, user: req.user.email });
