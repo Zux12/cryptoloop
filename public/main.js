@@ -139,10 +139,14 @@ async function loadWallet() {
         ada: 'cardano',
         xrp: 'ripple',
         doge: 'dogecoin',
-        sol: 'solana'
+        sol: 'solana',
+        trx: 'tron',         // ✅ Add this
+        trc: 'tron'          // ✅ Or map trc to a dummy or same as trx
       };
   
-      const ids = symbols.map(sym => symbolToId[sym]);
+     // const ids = symbols.map(sym => symbolToId[sym]);
+      const ids = symbols.map(sym => symbolToId[sym]).filter(Boolean); // ✅ removes undefined
+
       console.log("🪙 CoinGecko IDs:", ids);
   
       const res2 = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids.join(',')}`);
