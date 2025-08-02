@@ -19,76 +19,66 @@ router.get('/buy/history', authMiddleware, async (req, res) => {
 
 // 🔐 Create a Buy Request
 router.post('/buy', authMiddleware, async (req, res) => {
-    const { symbol, usd } = req.body;
-  
-    if (!symbol || !usd) {
-      return res.status(400).json({ msg: 'Missing symbol or USD amount' });
-    }
-  
-    try {
-      const coingeckoId = {
-        btc: 'bitcoin',
-        eth: 'ethereum',
-        usdt: 'tether',
-        bnb: 'binancecoin'
-      }[symbol.toLowerCase()] || symbol;
-  
-      const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd`);
+  const { symbol, usd } = req.body;
 
-      let price = 1; // fallback
-      
-    if (response.ok) {
-      const data = await response.json();
-      price = data[coingeckoId]?.usd || 1;
-      console.log(`🧮 CoinGecko price for ${coingeckoId}: $${price}`);
-    } else {
-      console.warn(`❌ CoinGecko API failed: ${response.status}. Using fallback price = 1`);
-    }
+  if (!symbol || !usd) {
+    return res.status(400).json({ msg: 'Missing symbol or USD amount' });
+  }
 
-      
-    //  const data = await response.json();
+  try {
+    const coingeckoId = {
+      btc: 'bitcoin',
+      eth: 'ethereum',
+      usdt: 'tether',
+      bnb: 'binancecoin'
+    }[symbol.toLowerCase()] || symbol;
+
+    const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd`);
+    const data = await response.json();
 
       console.log("🔍 Fetching price for:", coingeckoId);
       console.log("🧾 USD amount submitted:", usd);
       console.log("🪙 CoinGecko response:", data);
       console.log("💰 Calculated price:", data[coingeckoId]?.usd);
 
-      // const price = data[coingeckoId]?.usd || 1;
-      const amount = usd / price;
-
+    
+    const price = data[coingeckoId]?.usd || 1;
+    const amount = usd / price;
       console.log("🧮 Calculated amount:", amount);
-  
-      const request = new BuyRequest({
 
-        user: req.user.email,
-        symbol,
-        usd,
-        amount,
-        status: 'Pending'
-        timestamp: new Date()
-      });
-
+    const request = new BuyRequest({
+      user: req.user.email,
+      symbol,
+      usd,
+      amount,
+      status: 'Pending'
+    });
+    
       console.log("💾 Saving buy request:", { symbol, usd, user: req.user.email });
-
-  
-      await request.save();
+    await request.save();
       console.log("✅ Buy request successfully saved in DB:", request); // 🟢 ADD THIS
-      res.status(201).json({
-        msg: 'Buy request submitted successfully',
-        request: {
-          symbol: request.symbol,
-          usd: request.usd,
-          amount: request.amount,
-          status: request.status,
-          timestamp: request.timestamp
-        }
-      });
-  
-    } catch (err) {
-      console.error("❌ Failed to fetch price or save request:", err);
-      res.status(500).json({ msg: 'Failed to save request', error: err.message });
-    }
-  });
+    res.status(201).json({
+      msg: 'Buy request submitted successfully',
+      request: {
+        symbol: request.symbol,
+        usd: request.usd,
+        amount: request.amount,
+        status: request.status,
+        timestamp: request.timestamp
+      }
+    });
+  } catch (err) {
+    console.error("❌ Failed to fetch price or save request:", err);
+    res.status(500).json({ msg: 'Failed to save request', error: err.message });
+  }
+});
+
+
+//end buy request
+
+
+
+
 
 
 
