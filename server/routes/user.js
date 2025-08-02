@@ -7,17 +7,6 @@ const User = require('../models/User');
 const router = express.Router();
 
 // 🟢 GET Buy History
-router.get('/buy/history', authMiddleware, async (req, res) => {
-  try {
-    console.log("📥 req.user:", req.user);
-    const history = await BuyRequest.find({ user: req.user.email }).sort({ timestamp: -1 });
-    res.json(history);
-  } catch (err) {
-    res.status(500).json({ msg: 'Server error', error: err.message });
-  }
-});
-
-// 🔐 Create a Buy Request
 router.post('/buy', authMiddleware, async (req, res) => {
   const { symbol, usd } = req.body;
 
@@ -34,29 +23,34 @@ router.post('/buy', authMiddleware, async (req, res) => {
     }[symbol.toLowerCase()] || symbol;
 
     const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd`);
+
+    // ✅ Check for HTML error page
+    const contentType = response.headers.get('content-type') || '';
+    if (!response.ok || !contentType.includes('application/json')) {
+      console.error("❌ CoinGecko returned non-JSON response");
+      return res.status(500).json({ msg: 'CoinGecko API failed or returned invalid data' });
+    }
+
     const data = await response.json();
+    const price = data[coingeckoId]?.usd;
 
-      console.log("🔍 Fetching price for:", coingeckoId);
-      console.log("🧾 USD amount submitted:", usd);
-      console.log("🪙 CoinGecko response:", data);
-      console.log("💰 Calculated price:", data[coingeckoId]?.usd);
+    if (!price) {
+      return res.status(500).json({ msg: 'Price not found in response' });
+    }
 
-    
-    const price = data[coingeckoId]?.usd || 1;
     const amount = usd / price;
-      console.log("🧮 Calculated amount:", amount);
-
     const request = new BuyRequest({
       user: req.user.email,
       symbol,
       usd,
       amount,
-      status: 'Pending'
+      status: 'Pending',
+      timestamp: new Date()
     });
-    
-      console.log("💾 Saving buy request:", { symbol, usd, user: req.user.email });
+
     await request.save();
-      console.log("✅ Buy request successfully saved in DB:", request); // 🟢 ADD THIS
+    console.log("✅ Saved buy request:", request);
+
     res.status(201).json({
       msg: 'Buy request submitted successfully',
       request: {
@@ -67,8 +61,9 @@ router.post('/buy', authMiddleware, async (req, res) => {
         timestamp: request.timestamp
       }
     });
+
   } catch (err) {
-    console.error("❌ Failed to fetch price or save request:", err);
+    console.error("❌ Final catch in POST /buy:", err.message);
     res.status(500).json({ msg: 'Failed to save request', error: err.message });
   }
 });
