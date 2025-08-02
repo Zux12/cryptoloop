@@ -60,6 +60,7 @@ console.log("💰 Calculated price:", data[coingeckoId]?.usd);
 
   
       await request.save();
+      console.log("✅ Buy request successfully saved in DB:", request); // 🟢 ADD THIS
       res.status(201).json({
         msg: 'Buy request submitted successfully',
         request: {
