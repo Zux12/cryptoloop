@@ -195,6 +195,7 @@ if (table) {
 }
 
 
+
 // TODO: Insert startAiSimulation() and simulateTrade() with clean logic later...
 async function startAiSimulation() {
     const base = window.totalPortfolioValue;
