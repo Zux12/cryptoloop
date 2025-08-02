@@ -1,14 +1,7 @@
 const mongoose = require('mongoose');
 
 const BuyRequestSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  userEmail: {
-    type: String
-  },
+  user: { type: String, required: true },           // ✅ user's email
   symbol: { type: String, required: true },
   usd: { type: Number, required: true },
   amount: { type: Number, required: true },
