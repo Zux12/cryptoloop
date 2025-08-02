@@ -34,21 +34,26 @@ router.post('/buy', authMiddleware, async (req, res) => {
       }[symbol.toLowerCase()] || symbol;
   
       const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd`);
-     
-      if (!response.ok) {
-      console.error("❌ CoinGecko API failed:", response.status);
-      return res.status(500).json({ msg: 'CoinGecko API failed' });
-      }
+
+      let price = 1; // fallback
+      
+    if (response.ok) {
+      const data = await response.json();
+      price = data[coingeckoId]?.usd || 1;
+      console.log(`🧮 CoinGecko price for ${coingeckoId}: $${price}`);
+    } else {
+      console.warn(`❌ CoinGecko API failed: ${response.status}. Using fallback price = 1`);
+    }
 
       
-      const data = await response.json();
+    //  const data = await response.json();
 
       console.log("🔍 Fetching price for:", coingeckoId);
       console.log("🧾 USD amount submitted:", usd);
       console.log("🪙 CoinGecko response:", data);
       console.log("💰 Calculated price:", data[coingeckoId]?.usd);
 
-      const price = data[coingeckoId]?.usd || 1;
+      // const price = data[coingeckoId]?.usd || 1;
       const amount = usd / price;
 
       console.log("🧮 Calculated amount:", amount);
@@ -60,7 +65,7 @@ router.post('/buy', authMiddleware, async (req, res) => {
         usd,
         amount,
         status: 'Pending'
-
+        timestamp: new Date()
       });
 
       console.log("💾 Saving buy request:", { symbol, usd, user: req.user.email });
