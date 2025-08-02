@@ -53,7 +53,7 @@ console.log("💰 Calculated price:", data[coingeckoId]?.usd);
         usd,
         amount,
         status: 'Pending'
-        timestamp: new Date()
+
       });
 
       console.log("💾 Saving buy request:", { symbol, usd, user: req.user.email });
@@ -193,7 +193,7 @@ router.post('/sell', authMiddleware, async (req, res) => {
 
     // ✅ Save sell request to DB
     const request = new SellRequest({
-        userId: req.user.id,         // ✅ actual reference
+
         user: req.user.email,
         symbol: symbol.toLowerCase(),
         amount,
