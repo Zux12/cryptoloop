@@ -125,7 +125,10 @@ router.put('/buy/:id', authMiddleware, async (req, res) => {
       bnb: 'binancecoin'
     }[symbol] || symbol;
 
+    //get prices from geckocoin
     const resPrice = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd`);
+    console.log("🌐 CoinGecko PUT response status:", resPrice.status);
+    console.log("🌐 CoinGecko PUT headers:", resPrice.headers.get("content-type"));
     const contentType = resPrice.headers.get("content-type") || "";
 
     if (!resPrice.ok || !contentType.includes("application/json")) {
