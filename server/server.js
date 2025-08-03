@@ -89,17 +89,25 @@ app.use('/api/news', require('./routes/news'));
 
 // ✅ Express 5-compatible wildcard fallback
 app.use((req, res, next) => {
-  const fallbackPath = path.join(__dirname, '..', 'public', 'index.html');
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ msg: 'API route not found' });
+  }
 
+  const fallbackPath = path.join(__dirname, '..', 'public', 'index.html');
   fs.exists(fallbackPath, exists => {
     if (exists) {
       res.sendFile(fallbackPath);
     } else {
-      console.error('❌ index.html not found:', fallbackPath);
       res.status(404).send('Not Found');
     }
   });
 });
+
+
+
+
+
+
 
 
 
