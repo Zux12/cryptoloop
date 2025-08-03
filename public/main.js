@@ -113,87 +113,91 @@ async function loadMarketData() {
 
 // Load Wallet
 async function loadWallet() {
-    const token = localStorage.getItem('token');
-    const table = document.querySelector('#wallet-table tbody');
-  
-    try {
-      const res1 = await fetch('/api/user/wallet', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-  
-      const data = await res1.json();
-      const wallet = data.wallet || {};
-      console.log("👜 Loaded wallet from backend:", wallet);
-  
-      const symbols = Object.keys(wallet);
-      if (!symbols.length) {
-        table.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400">No holdings</td></tr>';
-        return;
-      }
-  
-      const symbolToId = {
-        btc: 'bitcoin',
-        eth: 'ethereum',
-        usdt: 'tether',
-        bnb: 'binancecoin',
-        ada: 'cardano',
-        xrp: 'ripple',
-        doge: 'dogecoin',
-        sol: 'solana',
-        trx: 'tron',         // ✅ Add this
-        trc: 'tron'          // ✅ Or map trc to a dummy or same as trx
-      };
-  
-     // const ids = symbols.map(sym => symbolToId[sym]);
-const ids = symbols.map(sym => symbolToId[sym]).filter(Boolean);
-console.log("🪙 CoinGecko IDs:", ids);
+  const token = localStorage.getItem('token');
+  const table = document.querySelector('#wallet-table tbody');
 
-const table = document.querySelector('#wallet-table tbody'); // or #sell-table-body depending on tab
+  try {
+    const res1 = await fetch('/api/user/wallet', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
 
-let prices = [];
-try {
-  const res2 = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids.join(',')}`);
-  const contentType = res2.headers.get("content-type") || "";
+    const data = await res1.json();
+    const wallet = data.wallet || {};
+    console.log("👜 Loaded wallet from backend:", wallet);
 
-  if (!res2.ok || !contentType.includes("application/json")) {
-    throw new Error(`❌ CoinGecko error: status ${res2.status}`);
-  }
-
-  prices = await res2.json();
-  if (!prices.length) throw new Error("🛑 No prices returned from CoinGecko");
-
-} catch (err) {
-  console.error("❌ Error fetching CoinGecko prices:", err.message);
-  if (table) {
-    table.innerHTML = `<tr><td colspan="6" class="text-center text-red-500">${err.message}</td></tr>`;
-  }
-  return;
-}
-
-let totalValue = 0;
-const rows = prices.map(coin => {
-  const symbol = coin.symbol.toLowerCase();
-  const amount = wallet[symbol] || 0;
-  const value = amount * coin.current_price;
-  totalValue += value;
-  return `
-    <tr>
-      <td class="p-2 border">${coin.name}</td>
-      <td class="p-2 border">${symbol.toUpperCase()}</td>
-      <td class="p-2 border">${amount}</td>
-      <td class="p-2 border">$${coin.current_price}</td>
-      <td class="p-2 border">$${value.toFixed(2)}</td>
-      <td class="p-2 border">${((value / totalValue) * 100).toFixed(2)}%</td>
-    </tr>
-  `;
-});
-
-window.totalPortfolioValue = totalValue;
-document.getElementById('total-value').textContent = `Total Portfolio Value: $${totalValue.toFixed(2)}`;
-if (table) {
-  table.innerHTML = rows.join('');
-}
+    const symbols = Object.keys(wallet);
+    if (!symbols.length) {
+      table.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400">No holdings</td></tr>';
+      return;
     }
+
+    const symbolToId = {
+      btc: 'bitcoin',
+      eth: 'ethereum',
+      usdt: 'tether',
+      bnb: 'binancecoin',
+      ada: 'cardano',
+      xrp: 'ripple',
+      doge: 'dogecoin',
+      sol: 'solana',
+      trx: 'tron',
+      trc: 'tron'
+    };
+
+    const ids = symbols.map(sym => symbolToId[sym]).filter(Boolean);
+    console.log("🪙 CoinGecko IDs:", ids);
+
+    let prices = [];
+    try {
+      const res2 = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids.join(',')}`);
+      const contentType = res2.headers.get("content-type") || "";
+
+      if (!res2.ok || !contentType.includes("application/json")) {
+        throw new Error(`❌ CoinGecko error: status ${res2.status}`);
+      }
+
+      prices = await res2.json();
+      if (!prices.length) throw new Error("🛑 No prices returned from CoinGecko");
+
+    } catch (err) {
+      console.error("❌ Error fetching CoinGecko prices:", err.message);
+      if (table) {
+        table.innerHTML = `<tr><td colspan="6" class="text-center text-red-500">${err.message}</td></tr>`;
+      }
+      return;
+    }
+
+    let totalValue = 0;
+    const rows = prices.map(coin => {
+      const symbol = coin.symbol.toLowerCase();
+      const amount = wallet[symbol] || 0;
+      const value = amount * coin.current_price;
+      totalValue += value;
+      return `
+        <tr>
+          <td class="p-2 border">${coin.name}</td>
+          <td class="p-2 border">${symbol.toUpperCase()}</td>
+          <td class="p-2 border">${amount}</td>
+          <td class="p-2 border">$${coin.current_price}</td>
+          <td class="p-2 border">$${value.toFixed(2)}</td>
+          <td class="p-2 border">${((value / totalValue) * 100).toFixed(2)}%</td>
+        </tr>
+      `;
+    });
+
+    window.totalPortfolioValue = totalValue;
+    document.getElementById('total-value').textContent = `Total Portfolio Value: $${totalValue.toFixed(2)}`;
+    if (table) {
+      table.innerHTML = rows.join('');
+    }
+
+  } catch (err) {
+    console.error("❌ Error in loadWallet():", err.message);
+    if (table) {
+      table.innerHTML = `<tr><td colspan="6" class="text-center text-red-500">Error loading wallet</td></tr>`;
+    }
+  }
+}
 
 
 // TODO: Insert startAiSimulation() and simulateTrade() with clean logic later...
