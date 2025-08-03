@@ -126,17 +126,24 @@ router.put('/buy/:id', authMiddleware, async (req, res) => {
     }[symbol] || symbol;
 
     //get prices from geckocoin
-    const resPrice = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd`);
-    console.log("🌐 CoinGecko PUT response status:", resPrice.status);
-    console.log("🌐 CoinGecko PUT headers:", resPrice.headers.get("content-type"));
-    const contentType = resPrice.headers.get("content-type") || "";
+    let price = 1;
+try {
+  const resPrice = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd`);
+  const contentType = resPrice.headers.get("content-type") || "";
 
-    if (!resPrice.ok || !contentType.includes("application/json")) {
-      throw new Error("❌ CoinGecko API failed during PUT");
-    }
+  console.log("🌐 CoinGecko PUT response status:", resPrice.status);
+  console.log("🌐 CoinGecko PUT headers:", contentType);
 
+  if (resPrice.ok && contentType.includes("application/json")) {
     const priceData = await resPrice.json();
-    const price = priceData[coingeckoId]?.usd || 1;
+    price = priceData[coingeckoId]?.usd || 1;
+  } else {
+    console.warn("⚠️ CoinGecko returned non-JSON or error. Using fallback price = 1");
+  }
+} catch (err) {
+  console.warn("⚠️ CoinGecko request failed. Using fallback price = 1");
+}
+
 
     request.amount = usd / price;
     await request.save();
