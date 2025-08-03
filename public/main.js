@@ -367,30 +367,63 @@ console.log("🧾 Rendering Buy History");
 
 console.log("🧾 Rendering Buy History at", new Date().toLocaleTimeString());
 
+
+//renderbuyhistory function
 async function renderBuyHistory() {
-    console.log("📡 Calling /api/user/buy/history");
-  
-    const token = localStorage.getItem("token");
-    const body = document.getElementById("buy-history-body");
-    if (!body) return;
-  
-    body.innerHTML = ''; // ✅ Clear before inserting new rows
+  console.log("📡 Calling /api/user/buy/history");
 
-    console.log("🖱️ Attaching edit/delete listeners...");
+  const token = localStorage.getItem("token");
+  const body = document.getElementById("buy-history-body");
+  if (!body) return;
 
+  body.innerHTML = ''; // ✅ Clear before inserting new rows
+
+  console.log("🖱️ Attaching edit/delete listeners...");
+
+  try {
+    const res = await fetch('/api/user/buy/history', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const contentType = res.headers.get("content-type") || "";
+    if (!res.ok || !contentType.includes("application/json")) {
+      throw new Error("❌ Response not valid JSON");
+    }
+
+    const history = await res.json();
+    if (!Array.isArray(history) || history.length === 0) {
+      body.innerHTML = '<tr><td colspan="5" class="text-center text-gray-400">No buy history yet</td></tr>';
+      return;
+    }
+
+    body.innerHTML = history.map(entry => `
+      <tr>
+        <td class="p-2 border">${entry.symbol.toUpperCase()}</td>
+        <td class="p-2 border">$${entry.usd}</td>
+        <td class="p-2 border">${entry.amount ? Number(entry.amount).toFixed(6) : '-'}</td>
+        <td class="p-2 border">${entry.status}</td>
+        <td>
+          ${entry.status === 'Pending' ? `
+            <button class="edit-btn bg-yellow-500 text-white px-2 py-1 rounded mr-1" data-id="${entry._id}">Edit</button>
+            <button class="delete-btn bg-red-600 text-white px-2 py-1 rounded" data-id="${entry._id}">Delete</button>
+          ` : '-'}
+        </td>
+      </tr>
+    `).join('');
+
+    // 🧠 Attach edit/delete after DOM rendered
     setTimeout(() => {
-      // DELETE button
       document.querySelectorAll('.delete-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const id = btn.dataset.id;
           console.log("🗑️ Deleting ID:", id);
-    
+
           if (confirm('❗ Are you sure you want to delete this buy request?')) {
             try {
               const res = await fetch(`/api/user/buy/${id}`, {
                 method: 'DELETE',
                 headers: {
-                  Authorization: `Bearer ${localStorage.getItem('token')}`
+                  Authorization: `Bearer ${token}`
                 }
               });
               const result = await res.json();
@@ -402,13 +435,12 @@ async function renderBuyHistory() {
           }
         });
       });
-    
-      // EDIT button
+
       document.querySelectorAll('.edit-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const id = btn.dataset.id;
           console.log("✏️ Editing ID:", id);
-    
+
           const newUsd = prompt("✏️ Enter new USD amount:");
           if (newUsd && !isNaN(newUsd) && parseFloat(newUsd) > 0) {
             try {
@@ -416,7 +448,7 @@ async function renderBuyHistory() {
                 method: 'PUT',
                 headers: {
                   'Content-Type': 'application/json',
-                  Authorization: `Bearer ${localStorage.getItem('token')}`
+                  Authorization: `Bearer ${token}`
                 },
                 body: JSON.stringify({ usd: parseFloat(newUsd) })
               });
@@ -429,9 +461,13 @@ async function renderBuyHistory() {
           }
         });
       });
-    }, 200); // small delay to ensure buttons exist
-    
-  
+    }, 200);
+
+  } catch (err) {
+    console.error("❌ Error loading buy history:", err.message);
+    body.innerHTML = '<tr><td colspan="5" class="text-center text-red-500">Failed to load buy history</td></tr>';
+  }
+}
 
 
     try {
@@ -555,92 +591,104 @@ async function renderApprovedBuysForSelling() {
 
 
 
-  async function renderSellTable() {
-    console.log("🟡 Running renderSellTable...");
-  
-    const token = localStorage.getItem("token");
-    const body = document.querySelector("#sell-table-body");
-    if (!body) return;
-  
-    try {
-      const [walletRes, historyRes] = await Promise.all([
-        fetch('/api/user/wallet', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/user/buy/history', { headers: { Authorization: `Bearer ${token}` } })
-      ]);
-  
-      const walletData = await walletRes.json();
-      const wallet = walletData.wallet || {};
-      console.log("📦 Loaded wallet from backend:", wallet);
-  
-      const history = (await historyRes.json()).filter(e => e.status === 'Approved');
-      console.log("📦 SellTable received buy history:", history.length, "records");
-  
-      body.innerHTML = ''; // Clear table body
-  
-      history.forEach(entry => {
-        const symbol = entry.symbol.toLowerCase();
-        const owned = wallet[symbol] || 0;
-  
-        console.log("🧾 Processing Approved entry:", `"${symbol}"`, owned);
-  
-        const row = document.createElement('tr');
-  
-        row.innerHTML = `
-          <td class="p-2 border">${symbol.toUpperCase()}</td>
-          <td class="p-2 border">${owned.toFixed(6)}</td>
-          <td class="p-2 border">${entry.usd ? `$${entry.usd}` : '-'}</td>
-          <td class="p-2 border">${new Date(entry.timestamp).toLocaleString()}</td>
-          <td class="p-2 border text-center">
-            <button class="sell-btn bg-yellow-500 text-white px-2 py-1 rounded" data-id="${entry._id}" data-symbol="${symbol}" data-amount="${owned}">Sell</button>
-          </td>
-          <td class="p-2 border">Pending</td>
-        `;
-  
-        body.appendChild(row);
-      });
-  
-      // 🔁 Attach event listeners AFTER the table is populated
-      document.querySelectorAll(".sell-btn").forEach(button => {
-        button.addEventListener("click", async () => {
-          const id = button.dataset.id;
-          const symbol = button.dataset.symbol;
-          const maxAmount = Number(button.dataset.amount);
-  
-          console.log("⚡ Sell button clicked:", { id, symbol, maxAmount });
-  
-          const input = prompt(`Enter amount to sell (max ${maxAmount}):`);
-          if (!input || isNaN(input)) {
-            alert("❌ Invalid amount.");
-            return;
-          }
-  
-          const value = Number(input);
-          if (value > maxAmount) {
-            alert("❌ Cannot sell more than you own.");
-            return;
-          }
-  
-          const res = await fetch('/api/user/sell', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`
-            },
-            body: JSON.stringify({ id, symbol, amount: value })
-          });
-  
-          const data = await res.json();
-          console.log("✅ Sell request submitted:", data);
-          alert(data.msg || 'Sell request submitted!');
-        });
-      });
-  
-    } catch (err) {
-      console.error("❌ Error rendering Sell Table:", err);
-      body.innerHTML = `<tr><td colspan="6" class="text-red-500 text-center p-4">Error loading Sell Table</td></tr>`;
+ async function renderSellTable() {
+  console.log("🟡 Running renderSellTable...");
+
+  const token = localStorage.getItem("token");
+  const body = document.querySelector("#sell-table-body");
+  if (!body) return;
+
+  try {
+    const [walletRes, historyRes] = await Promise.all([
+      fetch('/api/user/wallet', { headers: { Authorization: `Bearer ${token}` } }),
+      fetch('/api/user/buy/history', { headers: { Authorization: `Bearer ${token}` } })
+    ]);
+
+    const walletContentType = walletRes.headers.get("content-type") || "";
+    const historyContentType = historyRes.headers.get("content-type") || "";
+
+    if (!walletRes.ok || !walletContentType.includes("application/json")) {
+      throw new Error("❌ Wallet response was not valid JSON.");
     }
+
+    if (!historyRes.ok || !historyContentType.includes("application/json")) {
+      throw new Error("❌ Buy history response was not valid JSON.");
+    }
+
+    const walletData = await walletRes.json();
+    const wallet = walletData.wallet || {};
+    console.log("📦 Loaded wallet from backend:", wallet);
+
+    const history = (await historyRes.json()).filter(e => e.status === 'Approved');
+    console.log("📦 SellTable received buy history:", history.length, "records");
+
+    body.innerHTML = ''; // Clear table body
+
+    history.forEach(entry => {
+      const symbol = entry.symbol.toLowerCase();
+      const owned = wallet[symbol] || 0;
+
+      console.log("🧾 Processing Approved entry:", `"${symbol}"`, owned);
+
+      const row = document.createElement('tr');
+
+      row.innerHTML = `
+        <td class="p-2 border">${symbol.toUpperCase()}</td>
+        <td class="p-2 border">${owned.toFixed(6)}</td>
+        <td class="p-2 border">${entry.usd ? `$${entry.usd}` : '-'}</td>
+        <td class="p-2 border">${new Date(entry.timestamp).toLocaleString()}</td>
+        <td class="p-2 border text-center">
+          <button class="sell-btn bg-yellow-500 text-white px-2 py-1 rounded" data-id="${entry._id}" data-symbol="${symbol}" data-amount="${owned}">Sell</button>
+        </td>
+        <td class="p-2 border">Pending</td>
+      `;
+
+      body.appendChild(row);
+    });
+
+    // 🔁 Attach event listeners AFTER the table is populated
+    document.querySelectorAll(".sell-btn").forEach(button => {
+      button.addEventListener("click", async () => {
+        const id = button.dataset.id;
+        const symbol = button.dataset.symbol;
+        const maxAmount = Number(button.dataset.amount);
+
+        console.log("⚡ Sell button clicked:", { id, symbol, maxAmount });
+
+        const input = prompt(`Enter amount to sell (max ${maxAmount}):`);
+        if (!input || isNaN(input)) {
+          alert("❌ Invalid amount.");
+          return;
+        }
+
+        const value = Number(input);
+        if (value > maxAmount) {
+          alert("❌ Cannot sell more than you own.");
+          return;
+        }
+
+        const res = await fetch('/api/user/sell', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ id, symbol, amount: value })
+        });
+
+        const data = await res.json();
+        console.log("✅ Sell request submitted:", data);
+        alert(data.msg || 'Sell request submitted!');
+        renderApprovedBuysForSelling(); // refresh list
+      });
+    });
+
+  } catch (err) {
+    console.error("❌ Error rendering Sell Table:", err.message);
+    body.innerHTML = `<tr><td colspan="6" class="text-red-500 text-center p-4">${err.message}</td></tr>`;
   }
-  
+}
+
 
 
 
