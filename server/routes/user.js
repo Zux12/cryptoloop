@@ -219,5 +219,16 @@ router.post('/sell', authMiddleware, async (req, res) => {
   });
   
 
+// 🟢 GET Buy History
+router.get('/buy/history', authMiddleware, async (req, res) => {
+  try {
+    const history = await BuyRequest.find({ user: req.user.email }).sort({ timestamp: -1 });
+    res.json(history);
+  } catch (err) {
+    console.error("❌ Error loading buy history:", err.message);
+    res.status(500).json({ msg: 'Failed to load buy history', error: err.message });
+  }
+});
+
 
   module.exports = router;
