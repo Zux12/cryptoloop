@@ -402,12 +402,19 @@ async function renderBuyHistory() {
         <td class="p-2 border">$${entry.usd}</td>
         <td class="p-2 border">${entry.amount ? Number(entry.amount).toFixed(6) : '-'}</td>
         <td class="p-2 border">${entry.status}</td>
-        <td>
-          ${entry.status === 'Pending' ? `
-            <button class="edit-btn bg-yellow-500 text-white px-2 py-1 rounded mr-1" data-id="${entry._id}">Edit</button>
-            <button class="delete-btn bg-red-600 text-white px-2 py-1 rounded" data-id="${entry._id}">Delete</button>
-          ` : '-'}
-        </td>
+
+//edit and delete buttion in buy tab
+<td class="flex gap-2">
+  ${entry.status === 'Pending' ? `
+    <button class="edit-btn inline-flex items-center bg-yellow-400 hover:bg-yellow-500 text-white text-sm font-medium px-3 py-1 rounded-md shadow transition" data-id="${entry._id}">
+      ✏️ Edit
+    </button>
+    <button class="delete-btn inline-flex items-center bg-red-500 hover:bg-red-600 text-white text-sm font-medium px-3 py-1 rounded-md shadow transition" data-id="${entry._id}">
+      🗑️ Delete
+    </button>
+  ` : '<span class="text-gray-400 italic">Locked</span>'}
+</td>
+
       </tr>
     `).join('');
 
