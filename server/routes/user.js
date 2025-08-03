@@ -98,44 +98,54 @@ router.delete('/buy/:id', authMiddleware, async (req, res) => {
 
   // ✏️ Update USD of a Buy Request (Pending only)
 router.put('/buy/:id', authMiddleware, async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { usd } = req.body;
-  
-      if (!usd || isNaN(usd) || usd <= 0) {
-        return res.status(400).json({ msg: 'Invalid USD value' });
-      }
-  
-      const request = await BuyRequest.findById(id);
-      if (!request) return res.status(404).json({ msg: 'Buy request not found' });
-  
-      if (request.status !== 'Pending') {
-        return res.status(403).json({ msg: 'Cannot edit approved/rejected request' });
-      }
-  
-      request.usd = usd;
-  
-      // Recalculate amount (you can reuse your pricing logic here or set placeholder)
-      const symbol = request.symbol.toLowerCase();
-      const coingeckoId = {
-        btc: 'bitcoin',
-        eth: 'ethereum',
-        usdt: 'tether',
-        bnb: 'binancecoin'
-      }[symbol] || symbol;
-  
-      const resPrice = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd`);
-      const priceData = await resPrice.json();
-      const price = priceData[coingeckoId]?.usd || 1;
-  
-      request.amount = usd / price;
-      await request.save();
-  
-      res.json({ msg: 'Buy request updated successfully' });
-    } catch (err) {
-      res.status(500).json({ msg: 'Server error', error: err.message });
+  try {
+    const { id } = req.params;
+    const { usd } = req.body;
+
+    console.log("✏️ PUT /buy/:id hit:", id, "new USD:", usd);
+
+    if (!usd || isNaN(usd) || usd <= 0) {
+      return res.status(400).json({ msg: 'Invalid USD value' });
     }
-  });
+
+    const request = await BuyRequest.findById(id);
+    if (!request) return res.status(404).json({ msg: 'Buy request not found' });
+
+    if (request.status !== 'Pending') {
+      return res.status(403).json({ msg: 'Cannot edit approved/rejected request' });
+    }
+
+    request.usd = usd;
+
+    const symbol = request.symbol.toLowerCase();
+    const coingeckoId = {
+      btc: 'bitcoin',
+      eth: 'ethereum',
+      usdt: 'tether',
+      bnb: 'binancecoin'
+    }[symbol] || symbol;
+
+    const resPrice = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd`);
+    const contentType = resPrice.headers.get("content-type") || "";
+
+    if (!resPrice.ok || !contentType.includes("application/json")) {
+      throw new Error("❌ CoinGecko API failed during PUT");
+    }
+
+    const priceData = await resPrice.json();
+    const price = priceData[coingeckoId]?.usd || 1;
+
+    request.amount = usd / price;
+    await request.save();
+
+    res.json({ msg: 'Buy request updated successfully' });
+
+  } catch (err) {
+    console.error("❌ PUT /buy/:id failed:", err.message);
+    res.status(500).json({ msg: 'Server error', error: err.message });
+  }
+});
+
   
 
 
