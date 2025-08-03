@@ -411,24 +411,19 @@ async function renderBuyHistory() {
       </tr>
     `).join('');
 
-    // 🧠 Attach edit/delete after DOM rendered
     setTimeout(() => {
       document.querySelectorAll('.delete-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const id = btn.dataset.id;
-          console.log("🗑️ Deleting ID:", id);
-
-          if (confirm('❗ Are you sure you want to delete this buy request?')) {
+          if (confirm('❗ Delete this buy request?')) {
             try {
               const res = await fetch(`/api/user/buy/${id}`, {
                 method: 'DELETE',
-                headers: {
-                  Authorization: `Bearer ${token}`
-                }
+                headers: { Authorization: `Bearer ${token}` }
               });
               const result = await res.json();
               console.log("✅ Deleted:", result);
-              renderBuyHistory(); // Refresh
+              renderBuyHistory();
             } catch (err) {
               console.error("❌ Delete failed:", err);
             }
@@ -439,9 +434,7 @@ async function renderBuyHistory() {
       document.querySelectorAll('.edit-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const id = btn.dataset.id;
-          console.log("✏️ Editing ID:", id);
-
-          const newUsd = prompt("✏️ Enter new USD amount:");
+          const newUsd = prompt("✏️ New USD amount:");
           if (newUsd && !isNaN(newUsd) && parseFloat(newUsd) > 0) {
             try {
               const res = await fetch(`/api/user/buy/${id}`, {
@@ -454,7 +447,7 @@ async function renderBuyHistory() {
               });
               const result = await res.json();
               console.log("✅ Edited:", result);
-              renderBuyHistory(); // Refresh
+              renderBuyHistory();
             } catch (err) {
               console.error("❌ Edit failed:", err);
             }
@@ -469,41 +462,6 @@ async function renderBuyHistory() {
   }
 }
 
-
-    try {
-      const res = await fetch('/api/user/buy/history', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-  
-      const history = await res.json();
-     // body.innerHTML = ''; // ✅ Clear before inserting new rows
-  
-      if (!Array.isArray(history) || history.length === 0) {
-        body.innerHTML = '<tr><td colspan="5" class="text-center text-gray-400">No buy history yet</td></tr>';
-        return;
-      }
-  
-      body.innerHTML = history.map(entry => `
-        <tr>
-          <td class="p-2 border">${entry.symbol.toUpperCase()}</td>
-          <td class="p-2 border">$${entry.usd}</td>
-          <td class="p-2 border">${entry.amount ? Number(entry.amount).toFixed(6) : '-'}</td>
-          <td class="p-2 border">${entry.status}</td>
-          <td>
-      ${entry.status === 'Pending' ? `
-        <button class="edit-btn bg-yellow-500 text-white px-2 py-1 rounded mr-1" data-id="${entry._id}">Edit</button>
-        <button class="delete-btn bg-red-600 text-white px-2 py-1 rounded" data-id="${entry._id}">Delete</button>
-      ` : '-'}
-
-      </td>
-        </tr>
-      `).join('');
-    } catch (err) {
-      console.error("❌ Error loading buy history:", err);
-      body.innerHTML = '<tr><td colspan="5" class="text-center text-red-500">Failed to load buy history</td></tr>';
-    }
-  }
- 
 //added due to multiple occurance in table
   
 
