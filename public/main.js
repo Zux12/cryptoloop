@@ -343,9 +343,21 @@ async function loadChartData(days) {
       },
       options: {
         responsive: true,
-        plugins: {
-          legend: { display: true }
-        },
+       plugins: {
+  legend: { display: true },
+  zoom: {
+    zoom: {
+      wheel: { enabled: true },
+      pinch: { enabled: true },
+      mode: 'x',
+    },
+    pan: {
+      enabled: true,
+      mode: 'x',
+    }
+  }
+},
+
         scales: {
           y: {
             ticks: { color: 'white' },
@@ -362,6 +374,17 @@ async function loadChartData(days) {
     console.error("Error loading chart data:", err);
   }
 }
+
+function setChartRange(days) {
+  loadChartData(days);
+}
+
+function resetZoom() {
+  if (chart && chart.resetZoom) {
+    chart.resetZoom();
+  }
+}
+
 
 console.log("🧾 Rendering Buy History");
 
