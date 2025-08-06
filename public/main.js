@@ -255,6 +255,8 @@ const sentiments = [
       const action = Math.random() > 0.5 ? "Buy" : "Sell";
   
       const row = document.createElement("tr");
+      row.classList.add(action === "Buy" ? "flash-buy" : "flash-sell"); // 👈 add flash
+      
       row.innerHTML = `
         <td class="px-4 py-2">${new Date().toLocaleTimeString()}</td>
         <td class="px-4 py-2">${action}</td>
