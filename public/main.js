@@ -409,14 +409,18 @@ async function loadChartData(days) {
                 up: '#10b981',
                 down: '#ef4444',
                 unchanged: '#d1d5db'
-              }
+              },
+                order: 1 // 🟢 Draw on top
             },
             {
               type: 'bar',
               label: 'Volume',
               data: volumeData,
               backgroundColor: 'rgba(100, 149, 237, 0.3)',
-              yAxisID: 'volume'
+              yAxisID: 'volume',
+              barPercentage: 0.5,          // ✅ Optional: narrower bars
+              categoryPercentage: 0.9,     // ✅ Optional: more spacing
+              order: 0 // 🔵 Draw behind candles
             }
           ]
         },
@@ -451,17 +455,22 @@ async function loadChartData(days) {
               ticks: { color: 'white' },
               grid: { color: 'rgba(255,255,255,0.1)' }
             },
-            volume: {
-              position: 'right',
-              title: { display: true, text: 'Volume' },
-              ticks: { color: '#aaa' },
-              grid: { display: false },
-              beginAtZero: true,
-              display: true
-            }
+volume: {
+  position: 'right',
+  title: { display: true, text: 'Volume' },
+  ticks: {
+    color: '#aaa',
+    callback: value => (value / 1_000_000).toFixed(0) + 'M'
+  },
+  grid: { display: false },
+  beginAtZero: true,
+  display: true,
+  weight: 0.2
+}
           }
         }
       });
+      
     }
 
   } catch (err) {
