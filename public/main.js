@@ -375,9 +375,14 @@ async function loadChartData(days) {
   }
 }
 
-function setChartRange(days) {
+function setChartRange(days, el) {
   loadChartData(days);
+
+  // Highlight active button
+  document.querySelectorAll('.chart-range-btn').forEach(btn => btn.classList.remove('active'));
+  if (el) el.classList.add('active');
 }
+
 
 function resetZoom() {
   if (chart && chart.resetZoom) {
