@@ -1,5 +1,7 @@
 console.log("📦 main.js loaded");
 let chartType = 'line'; // default view
+let showVolume = true;
+
 
 
 // 🔐 Redirect if not logged in
@@ -397,79 +399,84 @@ async function loadChartData(days) {
         y: v[1]
       }));
 
-      chart = new Chart(ctx, {
-        type: 'candlestick',
-        data: {
-          datasets: [
-            {
-              label: `${currentChartName} (${days}d)`,
-              data: candleData,
-              borderColor: '#10b981',
-              color: {
-                up: '#10b981',
-                down: '#ef4444',
-                unchanged: '#d1d5db'
-              },
-                order: 1 // 🟢 Draw on top
-            },
-            {
-              type: 'bar',
-              label: 'Volume',
-              data: volumeData,
-              backgroundColor: 'rgba(100, 149, 237, 0.3)',
-              yAxisID: 'volume',
-              barPercentage: 0.5,          // ✅ Optional: narrower bars
-              categoryPercentage: 0.9,     // ✅ Optional: more spacing
-              order: 0 // 🔵 Draw behind candles
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { display: true },
-            zoom: {
-              zoom: {
-                wheel: { enabled: true },
-                pinch: { enabled: true },
-                mode: 'x'
-              },
-              pan: {
-                enabled: true,
-                mode: 'x'
-              }
-            }
-          },
-          scales: {
-            x: {
-              type: 'time',
-              time: {
-                unit: days === '1' ? 'hour' : 'day'
-              },
-              ticks: { color: 'white' },
-              grid: { color: 'rgba(255,255,255,0.1)' }
-            },
-            y: {
-              position: 'left',
-              title: { display: true, text: 'Price' },
-              ticks: { color: 'white' },
-              grid: { color: 'rgba(255,255,255,0.1)' }
-            },
-volume: {
-  position: 'right',
-  title: { display: true, text: 'Volume' },
-  ticks: {
-    color: '#aaa',
-    callback: value => (value / 1_000_000).toFixed(0) + 'M'
+// Prepare datasets separately
+const datasets = [
+  {
+    label: `${currentChartName} (${days}d)`,
+    data: candleData,
+    borderColor: '#10b981',
+    color: {
+      up: '#10b981',
+      down: '#ef4444',
+      unchanged: '#d1d5db'
+    },
+    order: 1 // 🟢 Draw candles on top
   },
-  grid: { display: false },
-  beginAtZero: true,
-  display: true,
-  weight: 0.2
-}
-          }
+  ...(showVolume ? [{
+    type: 'bar',
+    label: 'Volume',
+    data: volumeData,
+    backgroundColor: 'rgba(100, 149, 237, 0.3)',
+    yAxisID: 'volume',
+    barPercentage: 0.5,
+    categoryPercentage: 0.9,
+    order: 0 // 🔵 Draw volume behind
+  }] : [])
+];
+
+// Create the chart
+chart = new Chart(ctx, {
+  type: 'candlestick',
+  data: {
+    datasets: datasets
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: true },
+      zoom: {
+        zoom: {
+          wheel: { enabled: true },
+          pinch: { enabled: true },
+          mode: 'x'
+        },
+        pan: {
+          enabled: true,
+          mode: 'x'
         }
-      });
+      }
+    },
+    scales: {
+      x: {
+        type: 'time',
+        time: {
+          unit: days === '1' ? 'hour' : 'day'
+        },
+        ticks: { color: 'white' },
+        grid: { color: 'rgba(255,255,255,0.1)' }
+      },
+      y: {
+        position: 'left',
+        title: { display: true, text: 'Price' },
+        ticks: { color: 'white' },
+        grid: { color: 'rgba(255,255,255,0.1)' }
+      },
+      volume: {
+        position: 'right',
+        title: { display: true, text: 'Volume' },
+        ticks: {
+          color: '#aaa',
+          callback: value => (value / 1_000_000).toFixed(0) + 'M'
+        },
+        grid: { display: false },
+        beginAtZero: true,
+        display: true,
+        weight: 0.2
+      }
+    }
+  }
+});
+
       
     }
 
@@ -855,6 +862,17 @@ function renderNews(articles, newsBox) {
 }
 
 
+function toggleVolume() {
+  showVolume = !showVolume;
+
+  const button = document.querySelector('button[onclick="toggleVolume()"]');
+  button.textContent = showVolume ? '📉 Hide Volume' : '📈 Show Volume';
+
+  // Reload chart to reflect change
+  const activeBtn = document.querySelector('.chart-range-btn.active');
+  const days = activeBtn ? activeBtn.textContent.replace(/[^\d]/g, '') : '1';
+  setChartRange(days, activeBtn);
+}
 
 
 
