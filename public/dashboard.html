@@ -225,11 +225,16 @@
       <button onclick="setChartRange('30', this)" class="chart-range-btn px-4 py-2 text-sm text-white hover:bg-gray-700">30d</button>
     </div>
 
-    <!-- Reset Zoom Button -->
-    <button onclick="resetZoom()" class="bg-transparent border border-gray-500 text-white text-sm px-4 py-2 rounded hover:bg-gray-700">
-      🔄 Reset Zoom
-    </button>
-  </div>
+  <!-- 🔄 New chart type toggle -->
+  <button onclick="toggleChartType()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded">
+    🔁 Switch to Candlestick
+  </button>
+
+  <!-- Reset Zoom -->
+  <button onclick="resetZoom()" class="bg-transparent border border-gray-500 text-white text-sm px-4 py-2 rounded hover:bg-gray-700">
+    🔄 Reset Zoom
+  </button>
+</div>
 
   <!-- Chart Canvas -->
   <canvas id="cryptoChart" height="200"></canvas>
