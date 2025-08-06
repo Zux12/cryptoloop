@@ -9,4 +9,21 @@ body {
     margin: 10px;
     width: 250px;
   }
-  
+
+@keyframes flashBuy {
+  0% { background-color: #d1fae5; }   /* light green */
+  100% { background-color: transparent; }
+}
+
+@keyframes flashSell {
+  0% { background-color: #fee2e2; }   /* light red */
+  100% { background-color: transparent; }
+}
+
+.flash-buy {
+  animation: flashBuy 0.8s ease-out;
+}
+
+.flash-sell {
+  animation: flashSell 0.8s ease-out;
+}
