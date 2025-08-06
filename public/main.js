@@ -318,62 +318,126 @@ async function setChartCoin(symbol, name) {
 
 let chart;
 
+console.log("📈 Loading chart type:", chartType);
+
 async function loadChartData(days) {
   try {
-    const res = await fetch(`https://api.coingecko.com/api/v3/coins/${currentChartSymbol}/market_chart?vs_currency=usd&days=${days}`);
-    const data = await res.json();
-
-    const labels = data.prices.map(p => new Date(p[0]).toLocaleTimeString());
-    const values = data.prices.map(p => p[1]);
+    console.log("📈 Loading chart type:", chartType); // Debug log
 
     const ctx = document.getElementById('cryptoChart').getContext('2d');
+    if (chart) chart.destroy(); // Destroy old chart
 
-    if (chart) chart.destroy(); // reset chart if exists
+    if (chartType === 'line') {
+      const res = await fetch(`https://api.coingecko.com/api/v3/coins/${currentChartSymbol}/market_chart?vs_currency=usd&days=${days}`);
+      const data = await res.json();
 
-    chart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: `${currentChartName} (${days}d)`,
-          data: values,
-          borderColor: 'green',
-          borderWidth: 2,
-          fill: false
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { display: true },
-          zoom: {
+      const labels = data.prices.map(p => new Date(p[0]).toLocaleTimeString());
+      const values = data.prices.map(p => p[1]);
+
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: `${currentChartName} (${days}d)`,
+            data: values,
+            borderColor: 'green',
+            borderWidth: 2,
+            fill: false
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: true },
             zoom: {
-              wheel: { enabled: true },
-              pinch: { enabled: true },
-              mode: 'x',
+              zoom: {
+                wheel: { enabled: true },
+                pinch: { enabled: true },
+                mode: 'x'
+              },
+              pan: {
+                enabled: true,
+                mode: 'x'
+              }
+            }
+          },
+          scales: {
+            y: {
+              ticks: { color: 'white' },
+              grid: { color: 'rgba(255,255,255,0.1)' }
             },
-            pan: {
-              enabled: true,
-              mode: 'x',
+            x: {
+              ticks: { color: 'white' },
+              grid: { color: 'rgba(255,255,255,0.1)' }
             }
           }
+        }
+      });
+
+    } else if (chartType === 'candlestick') {
+      const res = await fetch(`https://api.coingecko.com/api/v3/coins/${currentChartSymbol}/ohlc?vs_currency=usd&days=${days}`);
+      const data = await res.json();
+
+      const formattedData = data.map(d => ({
+        x: new Date(d[0]),
+        o: d[1],
+        h: d[2],
+        l: d[3],
+        c: d[4]
+      }));
+
+      chart = new Chart(ctx, {
+        type: 'candlestick',
+        data: {
+          datasets: [{
+            label: `${currentChartName} (${days}d)`,
+            data: formattedData,
+            borderColor: '#10b981',
+            color: {
+              up: '#10b981',
+              down: '#ef4444',
+              unchanged: '#d1d5db'
+            }
+          }]
         },
-        scales: {
-          y: {
-            ticks: { color: 'white' },
-            grid: { color: 'rgba(255,255,255,0.1)' }
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: true },
+            zoom: {
+              zoom: {
+                wheel: { enabled: true },
+                pinch: { enabled: true },
+                mode: 'x'
+              },
+              pan: {
+                enabled: true,
+                mode: 'x'
+              }
+            }
           },
-          x: {
-            ticks: { color: 'white' },
-            grid: { color: 'rgba(255,255,255,0.1)' }
+          scales: {
+            x: {
+              type: 'time',
+              time: { unit: 'day' },
+              ticks: { color: 'white' },
+              grid: { color: 'rgba(255,255,255,0.1)' }
+            },
+            y: {
+              ticks: { color: 'white' },
+              grid: { color: 'rgba(255,255,255,0.1)' }
+            }
           }
         }
-      }
-    });
+      });
+    }
+
   } catch (err) {
     console.error("Error loading chart data:", err);
   }
 }
+
 
 
 function setChartRange(days, el) {
