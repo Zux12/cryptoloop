@@ -259,7 +259,7 @@ const sentiments = [
         <td class="px-4 py-2">${new Date().toLocaleTimeString()}</td>
         <td class="px-4 py-2">${action}</td>
         <td class="px-4 py-2">${sentiment.mood}</td>
-        <td class="px-4 py-2 ${finalPercent >= 0 ? 'text-green-400' : 'text-red-400'}">${finalPercent.toFixed(2)}%</td>
+        <td class="px-4 py-2 ${finalPercent >= 0 ? 'text-green-400' : 'text-red-400'}">${finalPercent}%</td>
         <td class="px-4 py-2">$${simulatedValue.toFixed(2)}</td>
       `;
       aiSimTable.prepend(row);
@@ -779,7 +779,7 @@ async function loadCryptoAIStateFromDB(base) {
         const elapsed = Math.floor((Date.now() - new Date(saved.lastUpdated)) / 5000);
         let value = saved.simulatedValue;
         for (let i = 0; i < elapsed; i++) {
-          value *= 1 + (Math.random() * 0.0007 - 0.0002); // small passive gain
+          value *= 1 + (Math.random() * 0.000004 - 0.000001); // small passive gain to 60% over 30 days
         }
         return value;
       }
