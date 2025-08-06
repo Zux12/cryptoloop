@@ -380,7 +380,7 @@ async function loadChartData(days) {
       const data = await res.json();
 
       const formattedData = data.map(d => ({
-        x: new Date(d[0]),
+        x: d[0],   // ✅ Keep as raw timestamp
         o: d[1],
         h: d[2],
         l: d[3],
