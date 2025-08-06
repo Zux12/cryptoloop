@@ -27,3 +27,27 @@ body {
 .flash-sell {
   animation: flashSell 0.8s ease-out;
 }
+
+
+.tab-style {
+  background-color: #1f2937; /* Tailwind gray-800 */
+  color: #d1d5db;            /* Tailwind gray-300 */
+  font-weight: 500;
+  padding: 10px 20px;
+  border-radius: 0.75rem;    /* rounded-xl */
+  border: 1px solid #374151; /* Tailwind gray-700 */
+  transition: all 0.3s ease;
+}
+
+.tab-style:hover {
+  background-color: #374151; /* hover to gray-700 */
+  color: white;
+  box-shadow: 0 0 5px #10b98180; /* subtle green glow */
+}
+
+.tab-btn.active {
+  background-color: #10b981; /* Tailwind green-500 */
+  color: black;
+  font-weight: 600;
+  box-shadow: 0 0 10px #10b98180;
+}
