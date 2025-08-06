@@ -211,24 +211,30 @@
     </div>
   </div>
 
-  <!-- 📊 Chart Tab -->
-  <div id="chart" class="tab px-6 py-6">
-    <h2 class="text-2xl font-semibold mb-4">📊 Live Chart</h2>
-    <div id="selected-coin-name" class="text-xl text-white mb-2"></div>
-    <button onclick="resetZoom()" class="mb-4 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium">
-        🔄 Reset Zoom
-      </button>
-      
-    <div class="mb-4 flex gap-2">
-        <button onclick="setChartRange('1')" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm">24h</button>
-        <button onclick="setChartRange('7')" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm">7d</button>
-        <button onclick="setChartRange('30')" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm">30d</button>
-      </div>
-    
-      
+<!-- 📊 Chart Tab -->
+<div id="chart" class="tab px-6 py-6">
+  <h2 class="text-2xl font-semibold mb-4">📊 Live Chart</h2>
+  <div id="selected-coin-name" class="text-xl text-white mb-2"></div>
 
-    <canvas id="cryptoChart" height="200"></canvas>
+  <!-- Controls Section -->
+  <div class="mb-4 flex flex-wrap items-center gap-2">
+    <!-- Range Button Group -->
+    <div id="chart-range-buttons" class="inline-flex bg-gray-800 rounded overflow-hidden border border-gray-700">
+      <button onclick="setChartRange('1', this)" class="chart-range-btn px-4 py-2 text-sm text-white hover:bg-gray-700">24h</button>
+      <button onclick="setChartRange('7', this)" class="chart-range-btn px-4 py-2 text-sm text-white hover:bg-gray-700">7d</button>
+      <button onclick="setChartRange('30', this)" class="chart-range-btn px-4 py-2 text-sm text-white hover:bg-gray-700">30d</button>
+    </div>
+
+    <!-- Reset Zoom Button -->
+    <button onclick="resetZoom()" class="bg-transparent border border-gray-500 text-white text-sm px-4 py-2 rounded hover:bg-gray-700">
+      🔄 Reset Zoom
+    </button>
   </div>
+
+  <!-- Chart Canvas -->
+  <canvas id="cryptoChart" height="200"></canvas>
+</div>
+
 
       <!--CryptoAi-->
       <div id="ai-sim" class="tab">
