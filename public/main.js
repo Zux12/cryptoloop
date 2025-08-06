@@ -85,6 +85,7 @@ async function loadUserName() {
 async function loadMarketData() {
   const table = document.querySelector('#market-table tbody');
   const localWallet = JSON.parse(localStorage.getItem('wallet')) || {}; // this is new aug6
+  console.log("🔍 Retrieved wallet from localStorage in Market tab:", localWallet);
 
   if (!watchlist.length) {
     table.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400">No coins in watchlist</td></tr>';
@@ -100,6 +101,7 @@ async function loadMarketData() {
       const symbol = coin.symbol.toLowerCase();
       const holding = localWallet[symbol] || 0;
       const holdingText = holding > 0 ? `${holding} ${coin.symbol.toUpperCase()}` : '–';
+      console.log(`📊 ${coin.name} (${symbol}) → holding:`, holding);
 
       return `
         <tr>
@@ -136,6 +138,7 @@ async function loadWallet() {
     const wallet = data.wallet || {};
     console.log("👜 Loaded wallet from backend:", wallet);
     localStorage.setItem('wallet', JSON.stringify(wallet)); // ✅ Add this line here
+    console.log("📦 Wallet saved to localStorage:", localStorage.getItem('wallet'));
 
     const symbols = Object.keys(wallet);
     if (!symbols.length) {
