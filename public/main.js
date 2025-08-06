@@ -322,10 +322,10 @@ console.log("📈 Loading chart type:", chartType);
 
 async function loadChartData(days) {
   try {
-    console.log("📈 Loading chart type:", chartType); // Debug log
+    console.log("📈 Chart type:", chartType);
 
     const ctx = document.getElementById('cryptoChart').getContext('2d');
-    if (chart) chart.destroy(); // Destroy old chart
+    if (chart) chart.destroy();
 
     if (chartType === 'line') {
       const res = await fetch(`https://api.coingecko.com/api/v3/coins/${currentChartSymbol}/market_chart?vs_currency=usd&days=${days}`);
@@ -337,7 +337,7 @@ async function loadChartData(days) {
       chart = new Chart(ctx, {
         type: 'line',
         data: {
-          labels: labels,
+          labels,
           datasets: [{
             label: `${currentChartName} (${days}d)`,
             data: values,
@@ -376,30 +376,49 @@ async function loadChartData(days) {
       });
 
     } else if (chartType === 'candlestick') {
-      const res = await fetch(`https://api.coingecko.com/api/v3/coins/${currentChartSymbol}/ohlc?vs_currency=usd&days=${days}`);
-      const data = await res.json();
+      // Fetch OHLC
+      const ohlcRes = await fetch(`https://api.coingecko.com/api/v3/coins/${currentChartSymbol}/ohlc?vs_currency=usd&days=${days}`);
+      const ohlc = await ohlcRes.json();
 
-      const formattedData = data.map(d => ({
-        x: d[0],   // ✅ Keep as raw timestamp
+      // Fetch volume data separately
+      const volumeRes = await fetch(`https://api.coingecko.com/api/v3/coins/${currentChartSymbol}/market_chart?vs_currency=usd&days=${days}`);
+      const volumeDataRaw = await volumeRes.json();
+
+      const candleData = ohlc.map(d => ({
+        x: d[0], // timestamp in ms
         o: d[1],
         h: d[2],
         l: d[3],
         c: d[4]
       }));
 
+      const volumeData = volumeDataRaw.total_volumes.map(v => ({
+        x: v[0],
+        y: v[1]
+      }));
+
       chart = new Chart(ctx, {
         type: 'candlestick',
         data: {
-          datasets: [{
-            label: `${currentChartName} (${days}d)`,
-            data: formattedData,
-            borderColor: '#10b981',
-            color: {
-              up: '#10b981',
-              down: '#ef4444',
-              unchanged: '#d1d5db'
+          datasets: [
+            {
+              label: `${currentChartName} (${days}d)`,
+              data: candleData,
+              borderColor: '#10b981',
+              color: {
+                up: '#10b981',
+                down: '#ef4444',
+                unchanged: '#d1d5db'
+              }
+            },
+            {
+              type: 'bar',
+              label: 'Volume',
+              data: volumeData,
+              backgroundColor: 'rgba(100, 149, 237, 0.3)',
+              yAxisID: 'volume'
             }
-          }]
+          ]
         },
         options: {
           responsive: true,
@@ -417,43 +436,39 @@ async function loadChartData(days) {
               }
             }
           },
-scales: {
-  x: {
-    type: 'time',
-    time: {
-      unit: days === '1' ? 'hour' : 'day', // ⏱️ Optional: show hours if 24h view
-      tooltipFormat: 'MMM dd',
-      displayFormats: {
-        day: 'MMM d',
-        hour: 'HH:mm'
-      }
-    },
-    min: Date.now() - (parseInt(days) || 30) * 24 * 60 * 60 * 1000, // ⏳ restrict to selected range
-    ticks: {
-      color: 'white'
-    },
-    grid: {
-      color: 'rgba(255,255,255,0.1)'
-    }
-  },
-  y: {
-    ticks: {
-      color: 'white'
-    },
-    grid: {
-      color: 'rgba(255,255,255,0.1)'
-    }
-  }
-}
-
+          scales: {
+            x: {
+              type: 'time',
+              time: {
+                unit: days === '1' ? 'hour' : 'day'
+              },
+              ticks: { color: 'white' },
+              grid: { color: 'rgba(255,255,255,0.1)' }
+            },
+            y: {
+              position: 'left',
+              title: { display: true, text: 'Price' },
+              ticks: { color: 'white' },
+              grid: { color: 'rgba(255,255,255,0.1)' }
+            },
+            volume: {
+              position: 'right',
+              title: { display: true, text: 'Volume' },
+              ticks: { color: '#aaa' },
+              grid: { display: false },
+              beginAtZero: true,
+              display: true
+            }
+          }
         }
       });
     }
 
   } catch (err) {
-    console.error("Error loading chart data:", err);
+    console.error("❌ Error loading chart data:", err);
   }
 }
+
 
 
 
