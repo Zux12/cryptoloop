@@ -417,18 +417,35 @@ async function loadChartData(days) {
               }
             }
           },
-          scales: {
-            x: {
-              type: 'time',
-              time: { unit: 'day' },
-              ticks: { color: 'white' },
-              grid: { color: 'rgba(255,255,255,0.1)' }
-            },
-            y: {
-              ticks: { color: 'white' },
-              grid: { color: 'rgba(255,255,255,0.1)' }
-            }
-          }
+scales: {
+  x: {
+    type: 'time',
+    time: {
+      unit: days === '1' ? 'hour' : 'day', // ⏱️ Optional: show hours if 24h view
+      tooltipFormat: 'MMM dd',
+      displayFormats: {
+        day: 'MMM d',
+        hour: 'HH:mm'
+      }
+    },
+    min: Date.now() - (parseInt(days) || 30) * 24 * 60 * 60 * 1000, // ⏳ restrict to selected range
+    ticks: {
+      color: 'white'
+    },
+    grid: {
+      color: 'rgba(255,255,255,0.1)'
+    }
+  },
+  y: {
+    ticks: {
+      color: 'white'
+    },
+    grid: {
+      color: 'rgba(255,255,255,0.1)'
+    }
+  }
+}
+
         }
       });
     }
