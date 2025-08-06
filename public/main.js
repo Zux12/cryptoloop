@@ -1,4 +1,5 @@
 console.log("📦 main.js loaded");
+let chartType = 'line'; // default view
 
 
 // 🔐 Redirect if not logged in
@@ -343,21 +344,20 @@ async function loadChartData(days) {
       },
       options: {
         responsive: true,
-       plugins: {
-  legend: { display: true },
-  zoom: {
-    zoom: {
-      wheel: { enabled: true },
-      pinch: { enabled: true },
-      mode: 'x',
-    },
-    pan: {
-      enabled: true,
-      mode: 'x',
-    }
-  }
-},
-
+        plugins: {
+          legend: { display: true },
+          zoom: {
+            zoom: {
+              wheel: { enabled: true },
+              pinch: { enabled: true },
+              mode: 'x',
+            },
+            pan: {
+              enabled: true,
+              mode: 'x',
+            }
+          }
+        },
         scales: {
           y: {
             ticks: { color: 'white' },
@@ -375,6 +375,7 @@ async function loadChartData(days) {
   }
 }
 
+
 function setChartRange(days, el) {
   loadChartData(days);
 
@@ -389,6 +390,18 @@ function resetZoom() {
     chart.resetZoom();
   }
 }
+
+function toggleChartType() {
+  chartType = chartType === 'line' ? 'candlestick' : 'line';
+
+  // Update button label
+  const btn = document.querySelector('button[onclick="toggleChartType()"]');
+  btn.textContent = chartType === 'line' ? '🔁 Switch to Candlestick' : '🔁 Switch to Line Chart';
+
+  // Reload chart with same days
+  setChartRange('1', document.querySelector('.chart-range-btn.active'));
+}
+
 
 
 console.log("🧾 Rendering Buy History");
