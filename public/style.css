@@ -74,3 +74,8 @@ body {
   box-shadow: 0 0 10px #818cf880;
 }
 
+.chart-range-btn.active {
+  background-color: #10b981; /* Tailwind green-500 */
+  color: black;
+  font-weight: 600;
+}
