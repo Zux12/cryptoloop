@@ -9,32 +9,15 @@ if (!localStorage.getItem('token')) {
 // Global Variables
 let coinList = [];
 let watchlist = JSON.parse(localStorage.getItem('watchlist')) || [
-  'tether',
-  'bitcoin',
-  'ethereum',
-  'solana',
-  'bnb',
-  'ripple',
-  'cardano',
-  'dogecoin',
-  'shiba-inu',
-  'avalanche-2',
-  'tron',
-  'polkadot',
-  'polygon',
-  'litecoin',
-  'chainlink',
-  'uniswap',
-  'internet-computer',
-  'stellar',
-  'aptos',
-  'vechain',
-  'render-token',
-  'the-graph',
-  'arbitrum',
-  'optimism',
-  'cosmos',
-  'near'
+  'bitcoin','ethereum','tether','binancecoin','usd-coin','ripple','cardano','solana',
+  'dogecoin','polkadot','polygon','shiba-inu','tron','litecoin','avalanche-2','chainlink',
+  'uniswap','cosmos','monero','stellar','bitcoin-cash','internet-computer','ethereum-classic',
+  'vechain','filecoin','theta-token','aptos','hedera-hashgraph','tron','okb','chain',
+  'toncoin','aave','algorand','zcash','itsecurities','axie-infinity','bitget-token',
+  'near','kaspa','frax','pepe','render-token','the-graph','optimism','arbitrum',
+  'internet-computer','stellar','filecoin','vechain','fantom','compound-governance-token',
+  'avalanche','flow','klay-token','fantom','polygon','gala','sushiswap','enjincoin','zcash',
+  'thorchain','quant-network','frax-share','kadena','neo','elrond-erd-2','dash','maker'
 ];
 
 let aiSimInterval;
