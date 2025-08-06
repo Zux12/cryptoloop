@@ -84,6 +84,8 @@ async function loadUserName() {
 // Load Market Data
 async function loadMarketData() {
   const table = document.querySelector('#market-table tbody');
+  const localWallet = JSON.parse(localStorage.getItem('wallet')) || {}; // this is new aug6
+
   if (!watchlist.length) {
     table.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400">No coins in watchlist</td></tr>';
     return;
@@ -93,23 +95,32 @@ async function loadMarketData() {
     const ids = watchlist.join(',');
     const res = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}`);
     const prices = await res.json();
-    table.innerHTML = prices.map(coin => `
-      <tr>
-      <td class="p-2 border text-blue-400 cursor-pointer hover:underline" onclick="setChartCoin('${coin.id}', '${coin.name}')">${coin.name}</td>
 
-        <td class="p-2 border">${coin.symbol.toUpperCase()}</td>
-        <td class="p-2 border">$${coin.current_price}</td>
-        <td class="p-2 border ${coin.price_change_percentage_24h >= 0 ? 'text-green-400' : 'text-red-400'}">${coin.price_change_percentage_24h.toFixed(2)}%</td>
-        <td class="p-2 border">${coin.price_change_percentage_24h >= 0 ? '📈' : '📉'}</td>
-        <td class="p-2 border text-center">
-        <button onclick="removeCoin('${coin.symbol}')" class="text-red-500">✖</button></td>
-      </tr>
-    `).join('');
+    table.innerHTML = prices.map(coin => {
+      const symbol = coin.symbol.toLowerCase();
+      const holding = localWallet[symbol] || 0;
+      const holdingText = holding > 0 ? `${holding} ${coin.symbol.toUpperCase()}` : '–';
+
+      return `
+        <tr>
+          <td class="p-2 border text-blue-400 cursor-pointer hover:underline" onclick="setChartCoin('${coin.id}', '${coin.name}')">${coin.name}</td>
+          <td class="p-2 border">${coin.symbol.toUpperCase()}</td>
+          <td class="p-2 border">$${coin.current_price}</td>
+          <td class="p-2 border ${coin.price_change_percentage_24h >= 0 ? 'text-green-400' : 'text-red-400'}">
+            ${coin.price_change_percentage_24h.toFixed(2)}%
+          </td>
+          <td class="p-2 border">${coin.price_change_percentage_24h >= 0 ? '📈Up Trending' : '📉Down Trending'}</td>
+          <td class="p-2 border">${holdingText}</td>
+        </tr>
+      `;
+    }).join(''); // ✅ This was misplaced in your version
+
   } catch (err) {
     console.error('Error loading market data:', err);
     table.innerHTML = '<tr><td colspan="6" class="text-center text-red-500">Failed to load market data</td></tr>';
   }
 }
+
 
 // Load Wallet
 async function loadWallet() {
@@ -124,6 +135,7 @@ async function loadWallet() {
     const data = await res1.json();
     const wallet = data.wallet || {};
     console.log("👜 Loaded wallet from backend:", wallet);
+    localStorage.setItem('wallet', JSON.stringify(wallet)); // ✅ Add this line here
 
     const symbols = Object.keys(wallet);
     if (!symbols.length) {
