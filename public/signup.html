@@ -34,13 +34,10 @@
 
 <div>
   <label for="agent" class="block text-sm mb-1">Select Agent</label>
-  <select id="agent" required class="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-white">
-    <option value="">-- Select Agent --</option>
-    ${Array.from({ length: 20 }, (_, i) => {
-      const id = 1001 + i;
-      return `<option value="AG${id}">AG${id}</option>`;
-    }).join('')}
-  </select>
+<select id="agent" required class="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-white">
+  <option value="">-- Select Agent --</option>
+</select>
+
 </div>
       
       <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-2 rounded-md font-semibold transition">Create Account</button>
@@ -55,18 +52,36 @@
     <p id="error-msg" class="text-red-500 mt-4 text-center text-sm"></p>
   </div>
 
-  <script>
-    const form = document.getElementById('signup-form');
-    const errorMsg = document.getElementById('error-msg');
+ <script>
+  // Populate agent options dynamically
+  const agentSelect = document.getElementById('agent');
+  for (let i = 1001; i <= 1020; i++) {
+    const opt = document.createElement('option');
+    opt.value = `AG${i}`;
+    opt.textContent = `AG${i}`;
+    agentSelect.appendChild(opt);
+  }
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+  const form = document.getElementById('signup-form');
+  const errorMsg = document.getElementById('error-msg');
 
-      const name = document.getElementById('name').value;
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      const agent = document.getElementById('agent').value; // 👈 Add this line
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
 
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const agent = document.getElementById('agent').value;
+
+    if (!agent) {
+      errorMsg.textContent = 'Please select an agent.';
+      return;
+    }
+
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true; btn.textContent = 'Creating...';
+
+    try {
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -76,12 +91,18 @@
       const data = await response.json();
 
       if (response.ok) {
-        alert('Account created successfully! Please log in.');
+        alert('Account created! Awaiting admin approval. Please log in.');
         window.location.href = 'login.html';
       } else {
         errorMsg.textContent = data.msg || 'Signup failed';
       }
-    });
-  </script>
+    } catch (err) {
+      errorMsg.textContent = 'Network error. Please try again.';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Create Account';
+    }
+  });
+</script>
+
 </body>
 </html>
