@@ -43,43 +43,61 @@
   </div>
 
   <script>
-    const form = document.getElementById('login-form');
-    const errorMsg = document.getElementById('error-msg');
-  
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-  
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-  
-      const res = await fetch('/api/auth/login', {
+  const form = document.getElementById('login-form');
+  const errorMsg = document.getElementById('error-msg');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const email = document.getElementById('email').value.trim().toLowerCase();
+    const password = document.getElementById('password').value;
+
+    let res, data;
+    try {
+      res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
-  
-      let data;
-      try {
-        data = await res.json();
-      } catch {
-        errorMsg.textContent = '❌ Invalid server response';
-        return;
-      }
-  
-      if (!res.ok) {
-        errorMsg.textContent = data.msg || 'Login failed';
-        return;
-      }
-  
-      if (!data.redirect) {
-        errorMsg.textContent = '❌ No redirect path received';
-        return;
-      }
-  
-      localStorage.setItem('token', data.token);
-      window.location.href = data.redirect;
-    });
-  </script>
+      data = await res.json();
+    } catch (err) {
+      errorMsg.textContent = '❌ Network error. Please try again.';
+      return;
+    }
+
+    if (!res.ok) {
+      // Will also show the “pending admin approval” message on 403
+      errorMsg.textContent = data.msg || 'Login failed';
+      return;
+    }
+
+    const token = data.token;
+    if (!token) {
+      errorMsg.textContent = '❌ Missing token from server';
+      return;
+    }
+
+    // Decode JWT payload without external libs
+    let payload = {};
+    try {
+      payload = JSON.parse(atob(token.split('.')[1] || ''));
+    } catch (err) {
+      errorMsg.textContent = '❌ Invalid token received';
+      return;
+    }
+
+    const isAdmin = !!payload.isAdmin;
+
+    localStorage.setItem('token', token);
+    // optional: store role/email for convenience
+    localStorage.setItem('isAdmin', String(isAdmin));
+    localStorage.setItem('email', email);
+
+    // Redirect based on role
+    window.location.href = isAdmin ? 'admin.html' : 'dashboard.html';
+  });
+</script>
+
   
 </body>
 </html>
