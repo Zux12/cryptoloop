@@ -16,6 +16,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use('/api/auth', require('./routes/auth'));
 app.use(express.static('public'));
 
 // ✅ Mount auth routes
