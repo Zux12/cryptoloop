@@ -22,6 +22,27 @@
   <!-- Status message -->
   <p id="status-msg" class="text-center text-sm text-green-400 mb-4"></p>
 
+
+<!-- Users Table (Admin Approval) -->
+<h2 class="text-xl font-bold mb-3">👥 Users (Approval)</h2>
+<div class="overflow-x-auto border border-gray-700 rounded mb-10">
+  <table class="min-w-full text-sm bg-gray-800">
+    <thead class="bg-gray-700 text-white">
+      <tr>
+        <th class="p-2 border">Email</th>
+        <th class="p-2 border">Name</th>
+        <th class="p-2 border">Agent</th>
+        <th class="p-2 border">Status</th>
+        <th class="p-2 border">Created</th>
+        <th class="p-2 border text-center">Actions</th>
+      </tr>
+    </thead>
+    <tbody id="admin-users-body" class="text-white"></tbody>
+  </table>
+</div>
+
+
+  
 <!-- Buy Requests Table -->
 <h2 class="text-lg font-bold mt-6 mb-2">🟢 Pending Buy Requests</h2>
 <div class="overflow-x-auto">
@@ -63,6 +84,9 @@
 
 
   <script>
+    if (!localStorage.getItem('token')) {
+  window.location.href = '/login.html';
+}
     const statusMsg = document.getElementById('status-msg');
     const tableBody = document.getElementById('admin-request-body');
 
@@ -258,9 +282,101 @@ async function handleSellAction(id, action) {
 
 fetchRequests();
 fetchSellRequests();
+loadUsers();
+
     
 
 console.log("🚀 Calling fetchSellRequests...");
+
+    
+const token = localStorage.getItem('token'); // reuse same token
+
+async function loadUsers() {
+  try {
+    const res = await fetch('/api/admin/users', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (res.status === 401 || res.status === 403) {
+      statusMsg.textContent = '⛔ Admin access required.';
+      setTimeout(() => (window.location.href = '/login.html'), 1200);
+      return;
+    }
+
+    const users = await res.json();
+    renderUsers(users);
+  } catch (err) {
+    console.error('❌ Failed to load users:', err);
+    statusMsg.textContent = '❌ Failed to load users';
+  }
+}
+
+function renderUsers(users) {
+  const tbody = document.getElementById('admin-users-body');
+  tbody.innerHTML = '';
+
+  if (!Array.isArray(users) || users.length === 0) {
+    tbody.innerHTML = `<tr>
+      <td class="p-3 text-center text-gray-400" colspan="6">No users found</td>
+    </tr>`;
+    return;
+  }
+
+  tbody.innerHTML = users.map(u => `
+    <tr class="border-b border-gray-700">
+      <td class="p-2 border">${u.email}</td>
+      <td class="p-2 border">${u.name}</td>
+      <td class="p-2 border">${u.agent || '-'}</td>
+      <td class="p-2 border">${u.isApproved ? '✅ Approved' : '❌ Pending'}</td>
+      <td class="p-2 border">${u.createdAt ? new Date(u.createdAt).toLocaleString() : '-'}</td>
+      <td class="p-2 border text-center">
+        ${u.isApproved ? '—' : `
+          <button class="bg-emerald-600 hover:bg-emerald-500 px-3 py-1 rounded text-xs"
+            onclick="approveUser('${u._id}')">Approve</button>
+          <button class="bg-red-600 hover:bg-red-500 px-3 py-1 rounded text-xs ml-2"
+            onclick="rejectUser('${u._id}')">Reject</button>
+        `}
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function approveUser(id) {
+  try {
+    const res = await fetch(`/api/admin/approve/${id}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.msg || 'Approve failed');
+    statusMsg.textContent = '✅ User approved';
+    await loadUsers();
+  } catch (err) {
+    console.error('❌', err);
+    statusMsg.textContent = '❌ Failed to approve user';
+  } finally {
+    setTimeout(() => statusMsg.textContent = '', 2500);
+  }
+}
+
+async function rejectUser(id) {
+  if (!confirm('Remove this user?')) return;
+  try {
+    const res = await fetch(`/api/admin/reject/${id}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.msg || 'Reject failed');
+    statusMsg.textContent = '✅ User removed';
+    await loadUsers();
+  } catch (err) {
+    console.error('❌', err);
+    statusMsg.textContent = '❌ Failed to remove user';
+  } finally {
+    setTimeout(() => statusMsg.textContent = '', 2500);
+  }
+}
 
   </script>
 </body>
