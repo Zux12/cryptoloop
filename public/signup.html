@@ -32,6 +32,17 @@
         <input id="password" type="password" required class="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-cyan-400" />
       </div>
 
+<div>
+  <label for="agent" class="block text-sm mb-1">Select Agent</label>
+  <select id="agent" required class="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-white">
+    <option value="">-- Select Agent --</option>
+    ${Array.from({ length: 20 }, (_, i) => {
+      const id = 1001 + i;
+      return `<option value="AG${id}">AG${id}</option>`;
+    }).join('')}
+  </select>
+</div>
+      
       <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-2 rounded-md font-semibold transition">Create Account</button>
     </form>
 
@@ -54,11 +65,12 @@
       const name = document.getElementById('name').value;
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
+      const agent = document.getElementById('agent').value; // 👈 Add this line
 
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password })
+        body: JSON.stringify({ name, email, password, agent })
       });
 
       const data = await response.json();
