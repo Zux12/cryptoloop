@@ -1,86 +1,59 @@
-  const express = require('express');
-  const bcrypt = require('bcryptjs');
-  const jwt = require('jsonwebtoken');
-  const User = require('../models/User');
-  const authMiddleware = require('../middleware/authMiddleware');
+const express = require('express');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
-  const router = express.Router();
+const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET || 'devsecret';
 
-  // 🔹 Test Route
-  router.get('/test', (req, res) => {
-    res.send('✅ Auth route is working!');
-  });
-
-  // 🔐 Signup Route
-  router.post('/signup', async (req, res) => {
-    const { name, email, password } = req.body;
-
-    try {
-      const existing = await User.findOne({ email });
-      if (existing) return res.status(400).json({ msg: 'Email already registered' });
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const newUser = new User({ name, email, password: hashedPassword });
-      await newUser.save();
-
-      res.status(201).json({ msg: 'Signup successful' });
-    } catch (err) {
-      res.status(500).json({ msg: 'Server error', error: err.message });
+// POST /api/auth/signup
+router.post('/signup', async (req, res) => {
+  try {
+    const { name, email, password, agent } = req.body;
+    if (!name || !email || !password || !agent) {
+      return res.status(400).json({ msg: 'Missing required fields' });
     }
-  });
 
-  // 🔐 Login Route
-  router.post('/login', async (req, res) => {
-    console.log('📥 LOGIN BODY:', req.body);  // ✅ ADD THIS
+    const exists = await User.findOne({ email });
+    if (exists) return res.status(409).json({ msg: 'Email already in use' });
+
+    const hash = await bcrypt.hash(password, 12);
+
+    await User.create({
+      name,
+      email,
+      password: hash,   // store HASH here
+      agent,
+      isApproved: false // pending by default
+    });
+
+    res.json({ msg: 'Account created. Awaiting admin approval.' });
+  } catch (err) {
+    console.error('Signup error:', err);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
+// POST /api/auth/login
+router.post('/login', async (req, res) => {
+  try {
     const { email, password } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ msg: 'Invalid credentials' });
 
-    // ✅ Hardcoded admin
-    if (email === 'admin@gmail.com' && password === 'admin123') {
-      console.log('✅ ADMIN LOGIN MATCHED');  // ✅ Add this too
-  // ✅ FIX: Include 'id' field for admin token
-  const token = jwt.sign(
-    { email: 'admin@gmail.com', isAdmin: true, id: 'admin' },
-    process.env.JWT_SECRET || 'secret'
-  );
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) return res.status(400).json({ msg: 'Invalid credentials' });
 
-      
-      return res.json({ token, redirect: '/admin.html' }); // ✅ ADD "return" here
+    if (!user.isApproved) {
+      return res.status(403).json({ msg: '⛔ Your account is pending admin approval.' });
     }
-    
-    try {
-      const user = await User.findOne({ email });
-      if (!user) return res.status(401).json({ msg: 'User not found' });
 
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) return res.status(401).json({ msg: 'Incorrect password' });
+    const token = jwt.sign({ uid: user._id, isAdmin: user.isAdmin }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
 
-      const token = jwt.sign({
-        email: user.email,
-        id: user._id,
-        isAdmin: false
-      }, process.env.JWT_SECRET, { expiresIn: '7d' });
-      
-      return res.json({ token, redirect: '/dashboard.html' });
-    } catch (err) {
-      return res.status(500).json({ msg: 'Login failed', error: err.message });
-    }
-  });
-
-
-  // 🔍 Get current logged-in user info
-  router.get('/me', authMiddleware, async (req, res) => {
-    try {
-      const user = await User.findById(req.user.id).select('name email');
-      res.json(user);
-    } catch (err) {
-      res.status(500).json({ msg: 'Failed to load user info' });
-    }
-  });
-
-//for testing only on cryptoloop render
-  router.get('/all-users', async (req, res) => {
-    const users = await User.find({});
-    res.json(users);
-  });
-  
-  module.exports = router;
+module.exports = router;
