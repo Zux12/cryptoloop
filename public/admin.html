@@ -153,28 +153,37 @@
     `).join('');
   }
 
-  async function approveUser(id) {
-    const r = await fetchJSON(`/api/admin/users/${id}/approve`, { method: 'POST' });
-    if (r.ok) {
-      statusMsg.textContent = '✅ User approved';
-      await loadUsers();
-    } else {
-      statusMsg.textContent = `❌ Approve failed: ${r.raw || r.status}`;
-    }
-    setTimeout(() => statusMsg.textContent = '', 2500);
+async function approveUser(id) {
+  const r = await fetch(`/api/admin/approve/${id}`, {
+    method: 'PATCH',
+    headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }
+  });
+  const data = await r.json().catch(() => ({}));
+  if (r.ok) {
+    statusMsg.textContent = '✅ User approved';
+    await loadUsers();
+  } else {
+    statusMsg.textContent = `❌ Approve failed: ${data.msg || r.status}`;
   }
+  setTimeout(() => (statusMsg.textContent = ''), 2500);
+}
 
-  async function rejectUser(id) {
-    if (!confirm('Remove this user?')) return;
-    const r = await fetchJSON(`/api/admin/users/${id}/reject`, { method: 'POST' });
-    if (r.ok) {
-      statusMsg.textContent = '✅ User removed';
-      await loadUsers();
-    } else {
-      statusMsg.textContent = `❌ Reject failed: ${r.raw || r.status}`;
-    }
-    setTimeout(() => statusMsg.textContent = '', 2500);
+async function rejectUser(id) {
+  if (!confirm('Remove this user?')) return;
+  const r = await fetch(`/api/admin/reject/${id}`, {
+    method: 'PATCH',
+    headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }
+  });
+  const data = await r.json().catch(() => ({}));
+  if (r.ok) {
+    statusMsg.textContent = '✅ User removed';
+    await loadUsers();
+  } else {
+    statusMsg.textContent = `❌ Reject failed: ${data.msg || r.status}`;
   }
+  setTimeout(() => (statusMsg.textContent = ''), 2500);
+}
+
 
   // ---------- BUY REQUESTS ----------
   async function fetchRequests() {
