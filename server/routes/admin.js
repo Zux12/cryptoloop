@@ -1,14 +1,22 @@
-// routes/admin.js
+// server/routes/admin.js
 const express = require('express');
-const { requireAuth, requireAdmin } = require('../middleware/authMiddleware');
+const authMiddleware = require('../middleware/authMiddleware');
 const BuyRequest = require('../models/BuyRequest');
 const SellRequest = require('../models/SellRequest');
 const User = require('../models/User');
 
 const router = express.Router();
 
+/** Admin-only guard */
+const adminOnly = (req, res, next) => {
+  if (!req.user || !req.user.isAdmin) {
+    return res.status(403).json({ msg: 'Unauthorized' });
+  }
+  next();
+};
+
 // All admin routes require auth + admin
-router.use(requireAuth, requireAdmin);
+router.use(authMiddleware, adminOnly);
 
 /**
  * GET /api/admin/buy-requests
@@ -63,11 +71,9 @@ router.post('/approve', async (req, res) => {
     if (!user.wallet || typeof user.wallet !== 'object') {
       user.wallet = {};
     }
+    // Fallback agent for legacy users without agent set
+    if (!user.agent) user.agent = 'UNASSIGNED';
 
-  // ✅ Ensure agent is set (older users may not have it)
-    if (!user.agent) user.agent = 'UNASSIGNED'; // or pick a sensible default like 'AG1001'
-
-    
     const sym = String(request.symbol || '').toLowerCase();
     const amount = Number(request.amount) || 0;
 
@@ -106,9 +112,8 @@ router.post('/sell-approve', async (req, res) => {
     const user = await User.findOne({ email: request.user });
     if (!user) return res.status(404).json({ msg: 'User not found' });
 
-  
     if (!user.wallet || typeof user.wallet !== 'object') user.wallet = {};
-    if (!user.agent) user.agent = 'UNASSIGNED'; // ✅ fallback
+    if (!user.agent) user.agent = 'UNASSIGNED'; // fallback
 
     const sym = String(request.symbol || '').toLowerCase();
     const amount = Number(request.amount) || 0;
@@ -160,21 +165,6 @@ router.post('/sell-reject', async (req, res) => {
   }
 });
 
-// GET /api/admin/users
-router.get('/users', async (req, res) => {
-  try {
-    const users = await User.find({}, 'name email agent isApproved createdAt')
-      .sort({ createdAt: -1 });
-    res.json(users);
-  } catch (e) {
-    console.error('GET /admin/users error:', e);
-    res.status(500).json({ msg: 'Server error' });
-  }
-});
-
-
-
-
 /**
  * POST /api/admin/sell-update
  * Generalized status update: Approve / Reject / Frozen / Transfer
@@ -196,8 +186,9 @@ router.post('/sell-update', async (req, res) => {
     const fromStatus = String(request.status || 'Pending');
     const toStatus =
       normalized === 'approve' ? 'Approved' :
-      normalized === 'rejected' ? 'Rejected' :
+      normalized === 'approved' ? 'Approved' :
       normalized === 'reject' ? 'Rejected' :
+      normalized === 'rejected' ? 'Rejected' :
       normalized === 'freeze' ? 'Frozen' :
       normalized === 'frozen' ? 'Frozen' :
       normalized === 'transfer' ? 'Transfer' :
@@ -223,7 +214,6 @@ router.post('/sell-update', async (req, res) => {
 
       user.wallet[sym] = owned - amount;
       user.markModified('wallet');
-
       await user.save();
     }
 
@@ -235,6 +225,69 @@ router.post('/sell-update', async (req, res) => {
   } catch (err) {
     console.error('❌ Error updating sell request:', err);
     res.status(500).json({ msg: 'Server error', error: err.message });
+  }
+});
+
+/**
+ * GET /api/admin/users
+ * List users pending approval (only those with isApproved: false)
+ */
+router.get('/users', async (req, res) => {
+  try {
+    const users = await User.find({ isApproved: false }, 'name email agent isApproved createdAt')
+      .sort({ createdAt: -1 });
+    res.json(users);
+  } catch (e) {
+    console.error('❌ GET /api/admin/users error:', e);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
+/**
+ * POST /api/admin/users/:id/approve
+ * Approve a user
+ */
+router.post('/users/:id/approve', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Ensure we don't trigger validation errors for old users missing agent
+    const updated = await User.findByIdAndUpdate(
+      id,
+      { $set: { isApproved: true, agent: { $ifNull: ['$agent', 'UNASSIGNED'] } } }, // $ifNull won't work inside update like this for Mongoose; handle with two-step:
+      { new: true }
+    );
+
+    // Fallback two-step for agent if the above operator isn't supported:
+    let userDoc = updated;
+    if (!userDoc) {
+      userDoc = await User.findById(id);
+      if (!userDoc) return res.status(404).json({ msg: 'User not found' });
+      if (!userDoc.agent) userDoc.agent = 'UNASSIGNED';
+      userDoc.isApproved = true;
+      await userDoc.save();
+    }
+
+    res.json({ msg: 'User approved', user: { _id: userDoc._id, name: userDoc.name, email: userDoc.email, agent: userDoc.agent, isApproved: userDoc.isApproved } });
+  } catch (err) {
+    console.error('❌ approve user error:', err);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
+/**
+ * POST /api/admin/users/:id/reject
+ * Reject (delete) a user
+ */
+router.post('/users/:id/reject', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await User.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ msg: 'User not found' });
+    res.json({ msg: 'User rejected & removed' });
+  } catch (err) {
+    console.error('❌ reject user error:', err);
+    res.status(500).json({ msg: 'Server error' });
   }
 });
 
