@@ -14,39 +14,32 @@ const PORT = process.env.PORT || 5050;
 app.use(cors());
 app.use(express.json());
 
-// Static (choose ONE location for your built/static files)
+// Static assets (serve your frontend from /public)
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// ---------- Routes (mount once, with safe guards) ----------
-try {
-  const authRoutes = require('./routes/auth');
-  app.use('/api/auth', authRoutes);
-} catch (err) {
-  console.error('🔥 Crash in /api/auth:', err.message);
+// ---------- Helper to mount routers safely ----------
+function mountRoute(routePath, modulePath) {
+  try {
+    const router = require(modulePath);
+    // Express routers are functions (req, res, next)
+    if (typeof router !== 'function') {
+      console.error(`🔥 Crash in ${routePath}: argument handler must be a function (exported type: ${typeof router})`);
+      return;
+    }
+    app.use(routePath, router);
+    console.log(`✅ Mounted ${routePath} from ${modulePath}`);
+  } catch (err) {
+    console.error(`🔥 Crash in ${routePath}:`, err.message);
+  }
 }
 
-try {
-  const userRoutes = require('./routes/user');
-  app.use('/api/user', userRoutes);
-} catch (err) {
-  console.error('🔥 Crash in /api/user:', err.message);
-}
+// ---------- Routes ----------
+mountRoute('/api/auth', './routes/auth');
+mountRoute('/api/user', './routes/user');
+mountRoute('/api/admin', './routes/admin');
+mountRoute('/api/ai', './routes/cryptoAi');
 
-try {
-  const adminRoutes = require('./routes/admin');
-  app.use('/api/admin', adminRoutes);
-} catch (err) {
-  console.error('🔥 Crash in /api/admin:', err.message);
-}
-
-try {
-  const aiRoutes = require('./routes/cryptoAi');
-  app.use('/api/ai', aiRoutes);
-} catch (err) {
-  console.error('🔥 Crash in /api/ai:', err.message);
-}
-
-// Price proxy
+// Price proxy (CoinGecko)
 app.get('/api/price/:id', async (req, res) => {
   try {
     const id = req.params.id;
@@ -60,11 +53,7 @@ app.get('/api/price/:id', async (req, res) => {
 
 // Crypto news
 console.log('📍 Registering /api/news route');
-try {
-  app.use('/api/news', require('./routes/news'));
-} catch (err) {
-  console.error('🔥 Crash in /api/news:', err.message);
-}
+mountRoute('/api/news', './routes/news');
 
 // ---------- API 404 guard ----------
 app.use((req, res, next) => {
@@ -86,7 +75,7 @@ app.use((req, res) => {
   });
 });
 
-// ---------- Start Server after Mongo connects ----------
+// ---------- Connect DB then start server ----------
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
