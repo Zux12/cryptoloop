@@ -4,6 +4,10 @@ const BuyRequest = require('../models/BuyRequest');
 const SellRequest = require('../models/SellRequest'); // ⬅️ Create this model if not already
 const User = require('../models/User');
 
+
+
+
+
 const router = express.Router();
 
 // 🟢 GET Buy History
@@ -254,9 +258,14 @@ router.get('/buy/history', authMiddleware, async (req, res) => {
 
 // Return current user's basic profile
 router.get('/me', requireAuth, async (req, res) => {
-  const u = await User.findById(req.user.uid).select('name email');
-  if (!u) return res.status(404).json({ msg: 'User not found' });
-  res.json({ id: u._id, name: u.name, email: u.email });
+  try {
+    const u = await User.findById(req.user.uid).select('name email');
+    if (!u) return res.status(404).json({ msg: 'User not found' });
+    res.json({ id: u._id, name: u.name, email: u.email });
+  } catch (e) {
+    console.error('GET /me error:', e);
+    res.status(500).json({ msg: 'Server error' });
+  }
 });
 
   module.exports = router;
