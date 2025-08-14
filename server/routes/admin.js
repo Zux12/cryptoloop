@@ -160,6 +160,21 @@ router.post('/sell-reject', async (req, res) => {
   }
 });
 
+// GET /api/admin/users
+router.get('/users', async (req, res) => {
+  try {
+    const users = await User.find({}, 'name email agent isApproved createdAt')
+      .sort({ createdAt: -1 });
+    res.json(users);
+  } catch (e) {
+    console.error('GET /admin/users error:', e);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
+
+
+
 /**
  * POST /api/admin/sell-update
  * Generalized status update: Approve / Reject / Frozen / Transfer
