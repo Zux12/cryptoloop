@@ -16,18 +16,16 @@ router.post('/signup', async (req, res) => {
     }
 
     email = String(email).toLowerCase().trim();
-
     const exists = await User.findOne({ email });
     if (exists) return res.status(409).json({ msg: 'Email already in use' });
 
     const hash = await bcrypt.hash(password, 12);
-
     await User.create({
       name: name.trim(),
       email,
-      password: hash,        // store hashed password
-      agent,                 // must match your enum in User model
-      isApproved: false      // pending by default
+      password: hash,
+      agent,                 // must be AG1001…AG1020 per your model enum
+      isApproved: false
     });
 
     res.json({ msg: 'Account created. Awaiting admin approval.' });
@@ -53,7 +51,7 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ msg: '⛔ Your account is pending admin approval.' });
     }
 
-    // ✅ Record last login time/IP (works on Render behind proxy)
+    // record last login (Render-friendly)
     const xfwd = (req.headers['x-forwarded-for'] || '').split(',')[0].trim();
     user.lastLoginAt = new Date();
     user.lastLoginIp = xfwd || req.ip || '';
@@ -65,9 +63,7 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    // Optional convenience redirect (client may ignore)
     const redirect = user.isAdmin ? '/admin.html' : '/dashboard.html';
-
     res.json({ token, isAdmin: !!user.isAdmin, redirect });
   } catch (err) {
     console.error('Login error:', err);
