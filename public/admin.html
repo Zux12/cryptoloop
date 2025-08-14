@@ -81,6 +81,27 @@
   </table>
 </div>
 
+<!-- Accounts Overview -->
+<h2 class="text-xl font-bold mt-10 mb-3">📒 Accounts Overview</h2>
+<div class="overflow-x-auto border border-gray-700 rounded mb-10">
+  <table class="min-w-full text-sm bg-gray-800">
+    <thead class="bg-gray-700 text-white">
+      <tr>
+        <th class="p-2 border">Name</th>
+        <th class="p-2 border">Email</th>
+        <th class="p-2 border">Agent</th>
+        <th class="p-2 border">Approved</th>
+        <th class="p-2 border">Last Login</th>
+        <th class="p-2 border">IP</th>
+        <th class="p-2 border">Wallet</th>
+        <th class="p-2 border">TPV (USD)</th>
+        <th class="p-2 border">AI Value</th>
+        <th class="p-2 border">AI Updated</th>
+      </tr>
+    </thead>
+    <tbody id="admin-accounts-body" class="text-white"></tbody>
+  </table>
+</div>
 
 
 <script>
@@ -293,10 +314,111 @@ async function rejectUser(id) {
     }
   })();
 
+
+
+// --- helper: map wallet symbols to CoinGecko IDs (extend as needed)
+const ID_MAP = {
+  btc:'bitcoin', eth:'ethereum', usdt:'tether', usdc:'usd-coin',
+  bnb:'binancecoin', xrp:'ripple', ada:'cardano', sol:'solana',
+  doge:'dogecoin', dot:'polkadot', matic:'polygon', shib:'shiba-inu',
+  trx:'tron', ltc:'litecoin', avax:'avalanche-2', link:'chainlink',
+  uni:'uniswap', atom:'cosmos', xlm:'stellar', bch:'bitcoin-cash',
+  icp:'internet-computer', etc:'ethereum-classic', vet:'vechain',
+  fil:'filecoin', apt:'aptos', hbar:'hedera-hashgraph', near:'near'
+};
+
+// Pull overview and render immediately; compute TPV afterwards
+async function loadAccountsOverview() {
+  const r = await fetchJSON('/api/admin/users/overview');
+  const tbody = document.getElementById('admin-accounts-body');
+  tbody.innerHTML = '';
+
+  if (!r.ok) {
+    tbody.innerHTML = `<tr><td colspan="10" class="p-3 text-center text-red-400">❌ /api/admin/users/overview ${r.status} — ${r.raw || 'Failed'}</td></tr>`;
+    return;
+  }
+
+  const rows = Array.isArray(r.data) ? r.data : [];
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="10" class="p-3 text-center text-gray-400">No users</td></tr>`;
+    return;
+  }
+
+  // Build table first (TPV will be filled later)
+  tbody.innerHTML = rows.map(u => {
+    const w = u.wallet || {};
+    const walletShort = Object.keys(w).length ? Object.entries(w).map(([k,v])=>`${k.toUpperCase()}:${(+v).toFixed(6)}`).join(', ') : '—';
+    return `
+      <tr class="border-b border-gray-700" data-user-id="${u._id}">
+        <td class="p-2 border">${u.name || '-'}</td>
+        <td class="p-2 border">${u.email}</td>
+        <td class="p-2 border">${u.agent || '-'}</td>
+        <td class="p-2 border">${u.isApproved ? '✅' : '❌'}</td>
+        <td class="p-2 border">${u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : '-'}</td>
+        <td class="p-2 border">${u.lastLoginIp || '-'}</td>
+        <td class="p-2 border">${walletShort}</td>
+        <td class="p-2 border tpv-cell">…</td>
+        <td class="p-2 border">${u.aiSim?.simulatedValue != null ? '$' + (+u.aiSim.simulatedValue).toFixed(2) : '—'}</td>
+        <td class="p-2 border">${u.aiSim?.lastUpdated ? new Date(u.aiSim.lastUpdated).toLocaleString() : '—'}</td>
+      </tr>
+    `;
+  }).join('');
+
+  // Compute TPV for everyone in one shot (union of coin IDs)
+  await fillTPV(rows);
+}
+
+// Fetch prices once and fill TPV cells
+async function fillTPV(users) {
+  // gather all symbols used across users
+  const symbols = new Set();
+  users.forEach(u => {
+    const w = u.wallet || {};
+    Object.keys(w).forEach(s => symbols.add(s.toLowerCase()));
+  });
+  if (!symbols.size) return;
+
+  // map to CoinGecko ids and dedupe
+  const ids = Array.from(symbols).map(s => ID_MAP[s] || s).filter(Boolean);
+  const uniqueIds = Array.from(new Set(ids));
+  if (!uniqueIds.length) return;
+
+  // pull current prices
+  // You can switch to /simple/price for lighter payloads; this one is simple too:
+  const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(uniqueIds.join(','))}&vs_currencies=usd`;
+  let prices = {};
+  try {
+    const res = await fetch(url);
+    prices = await res.json();
+  } catch (e) {
+    console.warn('TPV price fetch failed', e);
+    return;
+  }
+
+  // compute TPV per user and inject to table
+  users.forEach(u => {
+    const w = u.wallet || {};
+    let tpv = 0;
+    for (const [sym, amt] of Object.entries(w)) {
+      const id = ID_MAP[sym.toLowerCase()] || sym.toLowerCase();
+      const p = prices[id]?.usd || 0;
+      tpv += (+amt) * (+p);
+    }
+    const row = document.querySelector(`tr[data-user-id="${u._id}"] .tpv-cell`);
+    if (row) row.textContent = `$${tpv.toFixed(2)}`;
+  });
+}
+
+
+
+  
   // Kick off all loads
   loadUsers();
   fetchRequests();
   fetchSellRequests();
+  loadAccountsOverview(); // ✅ add this with your other kick-offs
+
+
 </script>
 
 
