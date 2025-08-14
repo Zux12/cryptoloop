@@ -1,4 +1,3 @@
-// routes/user.js
 const express = require('express');
 const { requireAuth } = require('../middleware/authMiddleware');
 const BuyRequest = require('../models/BuyRequest');
@@ -7,10 +6,10 @@ const User = require('../models/User');
 
 const router = express.Router();
 
-// all user routes require auth
+// all /api/user requires auth
 router.use(requireAuth);
 
-// attach current user doc once
+// attach current user document for convenience
 router.use(async (req, res, next) => {
   try {
     const u = await User.findById(req.user.uid).select('name email wallet');
@@ -18,6 +17,7 @@ router.use(async (req, res, next) => {
     req.currentUser = u;
     next();
   } catch (e) {
+    console.error('attach currentUser error:', e);
     next(e);
   }
 });
@@ -30,16 +30,8 @@ router.post('/buy', async (req, res) => {
   }
 
   try {
-    const coingeckoId = ({
-      btc: 'bitcoin',
-      eth: 'ethereum',
-      usdt: 'tether',
-      bnb: 'binancecoin'
-    }[symbol.toLowerCase()]) || symbol;
-
-    const response = await fetch(
-      `https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd`
-    );
+    const coingeckoId = ({ btc:'bitcoin', eth:'ethereum', usdt:'tether', bnb:'binancecoin' }[String(symbol).toLowerCase()]) || symbol;
+    const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd`);
 
     let price = 1;
     const contentType = response.headers.get('content-type') || '';
@@ -49,7 +41,6 @@ router.post('/buy', async (req, res) => {
     }
 
     const amount = usd / price;
-
     const request = new BuyRequest({
       user: req.currentUser.email,
       symbol,
@@ -60,15 +51,8 @@ router.post('/buy', async (req, res) => {
     });
 
     await request.save();
-    res.status(201).json({
-      msg: 'Buy request submitted successfully',
-      request: {
-        symbol: request.symbol,
-        usd: request.usd,
-        amount: request.amount,
-        status: request.status,
-        timestamp: request.timestamp
-      }
+    res.status(201).json({ msg: 'Buy request submitted successfully',
+      request: { symbol: request.symbol, usd: request.usd, amount: request.amount, status: request.status, timestamp: request.timestamp }
     });
   } catch (err) {
     console.error('❌ Failed in /buy:', err.message);
@@ -79,12 +63,11 @@ router.post('/buy', async (req, res) => {
 // DELETE /api/user/buy/:id
 router.delete('/buy/:id', async (req, res) => {
   try {
-    const reqDoc = await BuyRequest.findById(req.params.id);
-    if (!reqDoc) return res.status(404).json({ msg: 'Buy request not found' });
-    if (reqDoc.status !== 'Pending') {
-      return res.status(403).json({ msg: 'Cannot delete approved/rejected request' });
-    }
-    await reqDoc.deleteOne();
+    const request = await BuyRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ msg: 'Buy request not found' });
+    if (request.status !== 'Pending') return res.status(403).json({ msg: 'Cannot delete approved/rejected request' });
+
+    await request.deleteOne();
     res.json({ msg: 'Buy request deleted successfully' });
   } catch (err) {
     res.status(500).json({ msg: 'Server error', error: err.message });
@@ -95,40 +78,29 @@ router.delete('/buy/:id', async (req, res) => {
 router.put('/buy/:id', async (req, res) => {
   try {
     const { usd } = req.body;
-    if (!usd || isNaN(usd) || usd <= 0) {
-      return res.status(400).json({ msg: 'Invalid USD value' });
-    }
+    if (!usd || isNaN(usd) || usd <= 0) return res.status(400).json({ msg: 'Invalid USD value' });
 
-    const reqDoc = await BuyRequest.findById(req.params.id);
-    if (!reqDoc) return res.status(404).json({ msg: 'Buy request not found' });
-    if (reqDoc.status !== 'Pending') {
-      return res.status(403).json({ msg: 'Cannot edit approved/rejected request' });
-    }
+    const request = await BuyRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ msg: 'Buy request not found' });
+    if (request.status !== 'Pending') return res.status(403).json({ msg: 'Cannot edit approved/rejected request' });
 
-    reqDoc.usd = usd;
+    request.usd = usd;
 
-    const symbol = reqDoc.symbol.toLowerCase();
-    const coingeckoId = ({
-      btc: 'bitcoin',
-      eth: 'ethereum',
-      usdt: 'tether',
-      bnb: 'binancecoin'
-    }[symbol]) || symbol;
+    const symbol = String(request.symbol).toLowerCase();
+    const coingeckoId = ({ btc:'bitcoin', eth:'ethereum', usdt:'tether', bnb:'binancecoin' }[symbol]) || symbol;
 
     let price = 1;
     try {
-      const resPrice = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd`
-      );
-      const ct = resPrice.headers.get('content-type') || '';
-      if (resPrice.ok && ct.includes('application/json')) {
+      const resPrice = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd`);
+      const contentType = resPrice.headers.get('content-type') || '';
+      if (resPrice.ok && contentType.includes('application/json')) {
         const priceData = await resPrice.json();
         price = priceData[coingeckoId]?.usd ?? 1;
       }
-    } catch (_) {}
+    } catch {}
 
-    reqDoc.amount = usd / price;
-    await reqDoc.save();
+    request.amount = usd / price;
+    await request.save();
 
     res.json({ msg: 'Buy request updated successfully' });
   } catch (err) {
@@ -145,10 +117,7 @@ router.get('/wallet', async (req, res) => {
 // GET /api/user/approved-buys
 router.get('/approved-buys', async (req, res) => {
   try {
-    const approved = await BuyRequest.find({
-      user: req.currentUser.email,
-      status: 'Approved'
-    }).sort({ timestamp: -1 });
+    const approved = await BuyRequest.find({ user: req.currentUser.email, status: 'Approved' }).sort({ timestamp: -1 });
     res.json(approved);
   } catch (err) {
     res.status(500).json({ msg: 'Failed to fetch approved buys', error: err.message });
@@ -164,13 +133,11 @@ router.post('/sell', async (req, res) => {
 
   try {
     const current = (req.currentUser.wallet && req.currentUser.wallet[symbol]) || 0;
-    if (current < amount) {
-      return res.status(400).json({ msg: `Not enough ${symbol} to sell` });
-    }
+    if (current < amount) return res.status(400).json({ msg: `Not enough ${symbol} to sell` });
 
     const request = new SellRequest({
       user: req.currentUser.email,
-      symbol: symbol.toLowerCase(),
+      symbol: String(symbol).toLowerCase(),
       amount,
       status: 'Pending',
       timestamp: new Date()
@@ -187,8 +154,7 @@ router.post('/sell', async (req, res) => {
 // GET /api/user/sell/history
 router.get('/sell/history', async (req, res) => {
   try {
-    const history = await SellRequest.find({ user: req.currentUser.email })
-      .sort({ timestamp: -1 });
+    const history = await SellRequest.find({ user: req.currentUser.email }).sort({ timestamp: -1 });
     res.json(history);
   } catch (err) {
     res.status(500).json({ msg: 'Failed to load sell history', error: err.message });
@@ -198,8 +164,7 @@ router.get('/sell/history', async (req, res) => {
 // GET /api/user/buy/history
 router.get('/buy/history', async (req, res) => {
   try {
-    const history = await BuyRequest.find({ user: req.currentUser.email })
-      .sort({ timestamp: -1 });
+    const history = await BuyRequest.find({ user: req.currentUser.email }).sort({ timestamp: -1 });
     res.json(history);
   } catch (err) {
     res.status(500).json({ msg: 'Failed to load buy history', error: err.message });
