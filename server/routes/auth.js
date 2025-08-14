@@ -1,4 +1,3 @@
-// routes/auth.js
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -20,12 +19,13 @@ router.post('/signup', async (req, res) => {
     if (exists) return res.status(409).json({ msg: 'Email already in use' });
 
     const hash = await bcrypt.hash(password, 12);
+
     await User.create({
-      name: name.trim(),
+      name: String(name).trim(),
       email,
       password: hash,
-      agent,                 // must be AG1001…AG1020 per your model enum
-      isApproved: false
+      agent,            // must be one of AG1001..AG1020 per your schema
+      isApproved: false // pending by default
     });
 
     res.json({ msg: 'Account created. Awaiting admin approval.' });
@@ -51,19 +51,15 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ msg: '⛔ Your account is pending admin approval.' });
     }
 
-    // record last login (Render-friendly)
+    // record last login (works behind proxy)
     const xfwd = (req.headers['x-forwarded-for'] || '').split(',')[0].trim();
     user.lastLoginAt = new Date();
     user.lastLoginIp = xfwd || req.ip || '';
     await user.save();
 
-    const token = jwt.sign(
-      { uid: user._id, isAdmin: !!user.isAdmin },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
+    const token = jwt.sign({ uid: user._id, isAdmin: !!user.isAdmin }, JWT_SECRET, { expiresIn: '7d' });
     const redirect = user.isAdmin ? '/admin.html' : '/dashboard.html';
+
     res.json({ token, isAdmin: !!user.isAdmin, redirect });
   } catch (err) {
     console.error('Login error:', err);
