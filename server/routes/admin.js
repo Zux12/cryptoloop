@@ -4,6 +4,7 @@ const { requireAuth, requireAdmin } = require('../middleware/authMiddleware');
 const BuyRequest = require('../models/BuyRequest');
 const SellRequest = require('../models/SellRequest');
 const User = require('../models/User');
+const CryptoAISim = require('../models/CryptoAISim');
 
 const router = express.Router();
 
@@ -20,7 +21,10 @@ router.use(requireAuth, requireAdmin);
 // List users for approval table
 router.get('/users', async (req, res) => {
   try {
-    const users = await User.find({}, 'name email agent isApproved createdAt').sort({ createdAt: -1 });
+    const users = await User.find(
+      {},
+      'name email agent isApproved createdAt lastLoginAt lastLoginIp'
+    ).sort({ createdAt: -1 });
     res.json(users);
   } catch (e) {
     console.error('GET /admin/users error:', e);
@@ -28,15 +32,41 @@ router.get('/users', async (req, res) => {
   }
 });
 
-// Your admin.html calls PATCH /api/admin/approve/:id to approve a USER
-router.patch('/approve/:id', async (req, res) => {
+// Approve a USER (HTML was calling POST /api/admin/users/:id/approve)
+router.post('/users/:id/approve', async (req, res) => {
   try {
     const u = await User.findById(req.params.id);
     if (!u) return res.status(404).json({ msg: 'User not found' });
 
-    // Some older users might not have agent set — avoid schema validation error
-    if (!u.agent) u.agent = 'UNASSIGNED';
+    if (!u.agent) u.agent = 'AG1001'; // ✅ valid enum fallback
+    u.isApproved = true;
+    await u.save();
+    res.json({ msg: 'User approved', id: u._id });
+  } catch (e) {
+    console.error('POST /admin/users/:id/approve error:', e);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
 
+// Reject/remove a USER (HTML was calling POST /api/admin/users/:id/reject)
+router.post('/users/:id/reject', async (req, res) => {
+  try {
+    const u = await User.findById(req.params.id);
+    if (!u) return res.status(404).json({ msg: 'User not found' });
+    await u.deleteOne();
+    res.json({ msg: 'User removed', id: req.params.id });
+  } catch (e) {
+    console.error('POST /admin/users/:id/reject error:', e);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
+// 🔁 Keep your original PATCH endpoints too (so both work)
+router.patch('/approve/:id', async (req, res) => {
+  try {
+    const u = await User.findById(req.params.id);
+    if (!u) return res.status(404).json({ msg: 'User not found' });
+    if (!u.agent) u.agent = 'AG1001';
     u.isApproved = true;
     await u.save();
     res.json({ msg: 'User approved', id: u._id });
@@ -46,12 +76,10 @@ router.patch('/approve/:id', async (req, res) => {
   }
 });
 
-// Your admin.html calls PATCH /api/admin/reject/:id to remove a USER
 router.patch('/reject/:id', async (req, res) => {
   try {
     const u = await User.findById(req.params.id);
     if (!u) return res.status(404).json({ msg: 'User not found' });
-
     await u.deleteOne();
     res.json({ msg: 'User removed', id: req.params.id });
   } catch (e) {
@@ -64,7 +92,7 @@ router.patch('/reject/:id', async (req, res) => {
  * BUY REQUESTS
  * ========================= */
 
-// List pending buy requests (your admin.html calls GET /api/admin/buy-requests)
+// List pending buy requests
 router.get('/buy-requests', async (req, res) => {
   try {
     const pendingRequests = await BuyRequest.find({ status: 'Pending' }).sort({ timestamp: -1 });
@@ -75,13 +103,12 @@ router.get('/buy-requests', async (req, res) => {
   }
 });
 
-// Approve a BUY request (admin.html posts to /api/admin/approve with {id})
+// Approve a BUY request
 router.post('/approve', async (req, res) => {
   const { id } = req.body;
   try {
     const request = await BuyRequest.findById(id);
     if (!request) return res.status(404).json({ msg: 'Buy request not found' });
-
     if (request.status !== 'Pending') {
       return res.status(400).json({ msg: `Request already ${request.status}` });
     }
@@ -90,7 +117,7 @@ router.post('/approve', async (req, res) => {
     if (!user) return res.status(404).json({ msg: 'User not found' });
 
     if (!user.wallet || typeof user.wallet !== 'object') user.wallet = {};
-    if (!user.agent) user.agent = 'UNASSIGNED'; // avoid schema required error
+    if (!user.agent) user.agent = 'AG1001'; // ✅ valid enum fallback
 
     const sym = String(request.symbol || '').toLowerCase();
     const amount = Number(request.amount) || 0;
@@ -110,21 +137,18 @@ router.post('/approve', async (req, res) => {
   }
 });
 
-// Reject a BUY request (admin.html posts to /api/admin/reject with {id})
+// Reject a BUY request
 router.post('/reject', async (req, res) => {
   const { id } = req.body;
   try {
     const request = await BuyRequest.findById(id);
     if (!request) return res.status(404).json({ msg: 'Buy request not found' });
-
     if (request.status !== 'Pending') {
       return res.status(400).json({ msg: `Request already ${request.status}` });
     }
-
     request.status = 'Rejected';
     request.statusTimestamp = new Date();
     await request.save();
-
     res.json({ msg: 'Buy request rejected' });
   } catch (err) {
     console.error('❌ Admin reject-buy error:', err);
@@ -136,7 +160,7 @@ router.post('/reject', async (req, res) => {
  * SELL REQUESTS
  * ========================= */
 
-// List sell requests (your admin.html calls GET /api/admin/sell-requests)
+// List sell requests (all statuses)
 router.get('/sell-requests', async (req, res) => {
   try {
     const requests = await SellRequest.find({}).sort({ timestamp: -1 });
@@ -147,7 +171,7 @@ router.get('/sell-requests', async (req, res) => {
   }
 });
 
-// Generalized sell status update (admin.html posts to /api/admin/sell-update)
+// Generalized sell status update
 router.post('/sell-update', async (req, res) => {
   const { id, status } = req.body;
   const normalized = String(status || '').toLowerCase();
@@ -170,7 +194,7 @@ router.post('/sell-update', async (req, res) => {
       normalized === 'transfer' ? 'Transfer' :
       'Approved';
 
-    // Deduct only the first time it leaves Pending into a deducting state
+    // Deduct once when moving out of Pending to a deducting state
     const movingOutOfPending = request.status === 'Pending' && ['Approved', 'Frozen', 'Transfer'].includes(toStatus);
 
     if (movingOutOfPending) {
@@ -178,7 +202,7 @@ router.post('/sell-update', async (req, res) => {
       if (!user) return res.status(404).json({ msg: 'User not found' });
 
       if (!user.wallet || typeof user.wallet !== 'object') user.wallet = {};
-      if (!user.agent) user.agent = 'UNASSIGNED';
+      if (!user.agent) user.agent = 'AG1001'; // ✅ valid enum fallback
 
       const sym = String(request.symbol || '').toLowerCase();
       const amount = Number(request.amount) || 0;
@@ -204,21 +228,27 @@ router.post('/sell-update', async (req, res) => {
   }
 });
 
+/* =========================
+ * USERS OVERVIEW (for your new admin table idea)
+ * ========================= */
+
 // GET /api/admin/users/overview
 // Returns: [{ _id, name, email, agent, isApproved, createdAt, lastLoginAt, lastLoginIp, wallet, aiSim: { simulatedValue, lastUpdated } }]
-const CryptoAISim = require('../models/CryptoAISim');
-
 router.get('/users/overview', async (req, res) => {
   try {
-    // 1) pull users (light projection keeps payload small)
-    const users = await User.find({}, 'name email agent isApproved createdAt lastLoginAt lastLoginIp wallet').lean();
+    const users = await User.find(
+      {},
+      'name email agent isApproved createdAt lastLoginAt lastLoginIp wallet'
+    ).lean();
 
-    // 2) map userIds to get AI sims in one query
     const ids = users.map(u => u._id);
-    const sims = await CryptoAISim.find({ userId: { $in: ids } }, 'userId simulatedValue lastUpdated').lean();
+    const sims = await CryptoAISim.find(
+      { userId: { $in: ids } },
+      'userId simulatedValue lastUpdated'
+    ).lean();
+
     const simMap = new Map(sims.map(s => [String(s.userId), s]));
 
-    // 3) attach aiSim to each user
     const out = users.map(u => ({
       ...u,
       aiSim: simMap.get(String(u._id)) || null
@@ -230,7 +260,5 @@ router.get('/users/overview', async (req, res) => {
     res.status(500).json({ msg: 'Server error' });
   }
 });
-
-
 
 module.exports = router;
