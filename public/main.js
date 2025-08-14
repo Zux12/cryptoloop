@@ -1184,36 +1184,8 @@ async function loadSellHistoryTable() {
     }
   }
   
-async function hydrateUserHeader() {
-  const token = localStorage.getItem('token');
-  const nameEl = document.getElementById('welcome-name'); // <span id="welcome-name"></span>
-  if (!nameEl) return;
 
-  try {
-    const res = await fetch('/api/user/me', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!res.ok) throw new Error('profile fetch failed');
-    const { id, name, email } = await res.json();
 
-    // Cache for later use (and for quick reloads)
-    localStorage.setItem('userId', id);
-    localStorage.setItem('userName', name || '');
-    localStorage.setItem('userEmail', email || '');
-
-    const display = name || (email ? email.split('@')[0] : 'Trader');
-    nameEl.textContent = `Welcome, ${display} 👋`;
-  } catch {
-    // Fallback to whatever we have locally
-    const cachedName = localStorage.getItem('userName') || '';
-    const cachedEmail = localStorage.getItem('userEmail') || '';
-    const display = cachedName || (cachedEmail ? cachedEmail.split('@')[0] : 'Trader');
-    nameEl.textContent = `Welcome, ${display} 👋`;
-  }
-}
-
-// Call once when dashboard loads
-hydrateUserHeader();
 
 
 // Initialize on load
