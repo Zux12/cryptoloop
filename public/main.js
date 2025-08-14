@@ -53,17 +53,61 @@ document.getElementById('logout').addEventListener('click', () => {
   window.location.href = 'login.html';
 });
 
-// Load user name
+// Helper: safe JSON fetch that always sends token if present
+async function fetchJSON(url, opts = {}) {
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(opts.headers || {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  };
+  const res = await fetch(url, { ...opts, headers });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(text || res.statusText);
+  }
+  try { return JSON.parse(text); } catch { return text; }
+}
+
+// Load user name (resilient)
 async function loadUserName() {
+  const el = document.getElementById('welcome-user'); // make sure this exists in HTML
+  if (!el) return;
+
+  // 1) Immediate fallback from cache so UI never shows "undefined"
+  const cachedName  = localStorage.getItem('userName')  || '';
+  const cachedEmail = localStorage.getItem('userEmail') || '';
+  if (cachedName || cachedEmail) {
+    el.textContent = `Welcome, ${cachedName || cachedEmail.split('@')[0]} 👋`;
+  } else {
+    el.textContent = 'Welcome, Trader 👋';
+  }
+
+  // 2) Live fetch (prefer /api/user/me; fallback to /api/auth/me for compatibility)
+  const token = localStorage.getItem('token');
+  if (!token) return;
+
   try {
-    const token = localStorage.getItem('token');
-    const res = await fetch('/api/auth/me', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const data = await res.json();
-    document.getElementById('welcome-user').textContent = `Welcome, ${data.name} 👋`;
+    let data;
+    try {
+      data = await fetchJSON('/api/user/me');
+    } catch {
+      // fallback if your backend exposes /api/auth/me instead
+      data = await fetchJSON('/api/auth/me');
+    }
+
+    const name  = data.name || '';
+    const email = data.email || '';
+
+    // Cache for later sessions
+    if (data.id)     localStorage.setItem('userId', data.id);
+    if (name)        localStorage.setItem('userName', name);
+    if (email)       localStorage.setItem('userEmail', email);
+
+    el.textContent = `Welcome, ${name || (email ? email.split('@')[0] : 'Trader')} 👋`;
   } catch (err) {
-    console.error('Error loading user:', err);
+    console.error('loadUserName failed:', err);
+    // Keep the cached text we already set
   }
 }
 
