@@ -1018,9 +1018,7 @@ if (buyForm && !buyForm.hasSubmitListener) {
   });
   
 
-  const buySymbolInput = document.getElementById("buy-symbol");
-const buyAmountInput = document.getElementById("buy-amount");
-const buySubmitBtn = document.getElementById("buy-submit");
+
 
 
 
