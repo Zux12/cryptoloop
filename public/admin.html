@@ -91,7 +91,7 @@
 
   const statusMsg = document.getElementById('status-msg');
 
-  // Tiny logger that also writes to a debug area
+  // Simple debug logger to a box on the page
   function log(...args) {
     console.log(...args);
     let box = document.getElementById('debug-box');
@@ -119,7 +119,7 @@
     return { ok: res.ok, status: res.status, data: json, raw: text };
   }
 
-  // --- Users (Approval) ---
+  // ---------- USERS (Approval) ----------
   async function loadUsers() {
     const r = await fetchJSON('/api/admin/users');
     const tbody = document.getElementById('admin-users-body');
@@ -176,7 +176,7 @@
     setTimeout(() => statusMsg.textContent = '', 2500);
   }
 
-  // --- Buy Requests ---
+  // ---------- BUY REQUESTS ----------
   async function fetchRequests() {
     const r = await fetchJSON('/api/admin/buy-requests');
     const buyTable = document.getElementById('admin-buy-request-body');
@@ -208,9 +208,7 @@
   }
 
   async function handleBuyAction(id, action) {
-    let endpoint;
-    if (action === 'approve') endpoint = '/api/admin/approve';
-    else if (action === 'reject') endpoint = '/api/admin/reject'; // will 404 unless you add it server-side
+    const endpoint = action === 'approve' ? '/api/admin/approve' : '/api/admin/reject';
     const r = await fetchJSON(endpoint, { method: 'POST', body: JSON.stringify({ id }) });
     if (r.ok) {
       statusMsg.textContent = `✅ Request ${action}d successfully`;
@@ -221,7 +219,7 @@
     setTimeout(() => statusMsg.textContent = '', 3000);
   }
 
-  // --- Sell Requests ---
+  // ---------- SELL REQUESTS ----------
   async function fetchSellRequests() {
     const r = await fetchJSON('/api/admin/sell-requests');
     const body = document.getElementById('admin-sell-body');
@@ -273,25 +271,25 @@
     window.location.href = '/login.html';
   }
 
-  // --- Sanity ping: confirm we are authenticated and who we are
+  // --- Sanity: confirm we’re authenticated and admin (use /api/user/me)
   (async function sanity() {
-    const who = await fetchJSON('/api/auth/me');
-    if (who.ok) {
-      log('👤 /api/auth/me →', who.data);
-      if (!who.data?.isAdmin) {
-        statusMsg.textContent = '⛔ You are not an admin.';
-      }
-    } else {
-      log('❌ /api/auth/me failed', who.status, who.raw);
+    const me = await fetchJSON('/api/user/me'); // ✅ correct profile endpoint
+    if (!me.ok) {
       statusMsg.textContent = '❌ Auth check failed. Please log in again.';
+      return;
+    }
+    log('👤 /api/user/me →', me.data);
+    if (!me.data?.isAdmin) {
+      statusMsg.textContent = '⛔ You are not an admin.';
     }
   })();
 
-  // Kick everything off
+  // Kick off all loads
   loadUsers();
   fetchRequests();
   fetchSellRequests();
 </script>
+
 
 
 </body>
