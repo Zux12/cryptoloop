@@ -885,21 +885,7 @@ function toggleVolume() {
 
 
 
-// Initialize on load
-window.onload = function () {
-  loadUserName();
-  loadMarketData();
-  loadWallet();
-  loadCryptoNews();
-  renderBuyHistory(); // ✅ Add this
-  renderSellTable(); // ✅ Now added here
-  loadSellHistoryTable();  // ✅ THIS LINE
-  renderApprovedBuysForSelling(); // optional for Sell tab
-  clearAndBindBuyFormOnce(); // ✅ one and only buy form bind
-  document.getElementById("buy-symbol").addEventListener("input", checkBuyFormValidity);
-document.getElementById("buy-amount").addEventListener("input", checkBuyFormValidity);
 
-};
 
 (() => {
     const oldForm = document.getElementById('buy-form');
@@ -1154,3 +1140,20 @@ async function loadSellHistoryTable() {
     }
   }
   
+
+
+// Initialize on load
+window.onload = function () {
+  loadUserName();
+  loadMarketData();
+  loadWallet();
+  loadCryptoNews();
+  renderBuyHistory(); // ✅ Add this
+  renderSellTable(); // ✅ Now added here
+  loadSellHistoryTable();  // ✅ THIS LINE
+  renderApprovedBuysForSelling(); // optional for Sell tab
+  clearAndBindBuyFormOnce(); // ✅ one and only buy form bind
+  document.getElementById("buy-symbol").addEventListener("input", checkBuyFormValidity);
+document.getElementById("buy-amount").addEventListener("input", checkBuyFormValidity);
+
+};
