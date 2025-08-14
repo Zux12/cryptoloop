@@ -1022,18 +1022,6 @@ if (buyForm && !buyForm.hasSubmitListener) {
 const buyAmountInput = document.getElementById("buy-amount");
 const buySubmitBtn = document.getElementById("buy-submit");
 
-function checkBuyFormValidity() {
-  const symbol = buySymbolInput.value.trim();
-  const amount = parseFloat(buyAmountInput.value);
-  const valid = symbol && !isNaN(amount) && amount > 0;
-
-  buySubmitBtn.disabled = !valid;
-  buySubmitBtn.classList.toggle("opacity-50", !valid);
-}
-
-// Attach live input validation
-buySymbolInput.addEventListener("input", checkBuyFormValidity);
-buyAmountInput.addEventListener("input", checkBuyFormValidity);
 
 
 //paste this Once
