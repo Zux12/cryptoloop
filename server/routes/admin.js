@@ -8,7 +8,7 @@ const CryptoAISim = require('../models/CryptoAISim');
 
 const router = express.Router();
 
-// --- health check to confirm the router is mounted ---
+// --- quick health check to confirm the router is mounted ---
 router.get('/ping', (req, res) => res.json({ ok: true, scope: 'admin' }));
 
 // All admin routes require auth + admin
@@ -18,13 +18,11 @@ router.use(requireAuth, requireAdmin);
  * USERS (Admin approval)
  * ========================= */
 
-// List users for approval table
+// GET /api/admin/users
 router.get('/users', async (req, res) => {
   try {
-    const users = await User.find(
-      {},
-      'name email agent isApproved createdAt lastLoginAt lastLoginIp'
-    ).sort({ createdAt: -1 });
+    const users = await User.find({}, 'name email agent isApproved createdAt lastLoginAt lastLoginIp')
+      .sort({ createdAt: -1 });
     res.json(users);
   } catch (e) {
     console.error('GET /admin/users error:', e);
@@ -32,43 +30,16 @@ router.get('/users', async (req, res) => {
   }
 });
 
-// Approve a USER (HTML was calling POST /api/admin/users/:id/approve)
-router.post('/users/:id/approve', async (req, res) => {
-  try {
-    const u = await User.findById(req.params.id);
-    if (!u) return res.status(404).json({ msg: 'User not found' });
-
-    if (!u.agent) u.agent = 'AG1001'; // ✅ valid enum fallback
-    u.isApproved = true;
-    await u.save();
-    res.json({ msg: 'User approved', id: u._id });
-  } catch (e) {
-    console.error('POST /admin/users/:id/approve error:', e);
-    res.status(500).json({ msg: 'Server error' });
-  }
-});
-
-// Reject/remove a USER (HTML was calling POST /api/admin/users/:id/reject)
-router.post('/users/:id/reject', async (req, res) => {
-  try {
-    const u = await User.findById(req.params.id);
-    if (!u) return res.status(404).json({ msg: 'User not found' });
-    await u.deleteOne();
-    res.json({ msg: 'User removed', id: req.params.id });
-  } catch (e) {
-    console.error('POST /admin/users/:id/reject error:', e);
-    res.status(500).json({ msg: 'Server error' });
-  }
-});
-
-// 🔁 Keep your original PATCH endpoints too (so both work)
+// PATCH /api/admin/approve/:id — approve a USER
 router.patch('/approve/:id', async (req, res) => {
   try {
     const u = await User.findById(req.params.id);
     if (!u) return res.status(404).json({ msg: 'User not found' });
-    if (!u.agent) u.agent = 'AG1001';
+
+    if (!u.agent) u.agent = 'UNASSIGNED'; // fallback to avoid validation error
     u.isApproved = true;
     await u.save();
+
     res.json({ msg: 'User approved', id: u._id });
   } catch (e) {
     console.error('PATCH /admin/approve/:id error:', e);
@@ -76,10 +47,12 @@ router.patch('/approve/:id', async (req, res) => {
   }
 });
 
+// PATCH /api/admin/reject/:id — remove a USER
 router.patch('/reject/:id', async (req, res) => {
   try {
     const u = await User.findById(req.params.id);
     if (!u) return res.status(404).json({ msg: 'User not found' });
+
     await u.deleteOne();
     res.json({ msg: 'User removed', id: req.params.id });
   } catch (e) {
@@ -92,7 +65,7 @@ router.patch('/reject/:id', async (req, res) => {
  * BUY REQUESTS
  * ========================= */
 
-// List pending buy requests
+// GET /api/admin/buy-requests
 router.get('/buy-requests', async (req, res) => {
   try {
     const pendingRequests = await BuyRequest.find({ status: 'Pending' }).sort({ timestamp: -1 });
@@ -103,7 +76,7 @@ router.get('/buy-requests', async (req, res) => {
   }
 });
 
-// Approve a BUY request
+// POST /api/admin/approve — approve a BUY request
 router.post('/approve', async (req, res) => {
   const { id } = req.body;
   try {
@@ -117,12 +90,12 @@ router.post('/approve', async (req, res) => {
     if (!user) return res.status(404).json({ msg: 'User not found' });
 
     if (!user.wallet || typeof user.wallet !== 'object') user.wallet = {};
-    if (!user.agent) user.agent = 'AG1001'; // ✅ valid enum fallback
+    if (!user.agent) user.agent = 'UNASSIGNED';
 
     const sym = String(request.symbol || '').toLowerCase();
     const amount = Number(request.amount) || 0;
-
     user.wallet[sym] = (user.wallet[sym] || 0) + amount;
+
     user.markModified('wallet');
     await user.save();
 
@@ -137,7 +110,7 @@ router.post('/approve', async (req, res) => {
   }
 });
 
-// Reject a BUY request
+// POST /api/admin/reject — reject a BUY request
 router.post('/reject', async (req, res) => {
   const { id } = req.body;
   try {
@@ -146,9 +119,11 @@ router.post('/reject', async (req, res) => {
     if (request.status !== 'Pending') {
       return res.status(400).json({ msg: `Request already ${request.status}` });
     }
+
     request.status = 'Rejected';
     request.statusTimestamp = new Date();
     await request.save();
+
     res.json({ msg: 'Buy request rejected' });
   } catch (err) {
     console.error('❌ Admin reject-buy error:', err);
@@ -160,7 +135,7 @@ router.post('/reject', async (req, res) => {
  * SELL REQUESTS
  * ========================= */
 
-// List sell requests (all statuses)
+// GET /api/admin/sell-requests
 router.get('/sell-requests', async (req, res) => {
   try {
     const requests = await SellRequest.find({}).sort({ timestamp: -1 });
@@ -171,11 +146,10 @@ router.get('/sell-requests', async (req, res) => {
   }
 });
 
-// Generalized sell status update
+// POST /api/admin/sell-update — update status
 router.post('/sell-update', async (req, res) => {
   const { id, status } = req.body;
   const normalized = String(status || '').toLowerCase();
-
   if (!['approve', 'approved', 'reject', 'rejected', 'frozen', 'freeze', 'transfer'].includes(normalized)) {
     return res.status(400).json({ msg: 'Invalid status' });
   }
@@ -185,16 +159,11 @@ router.post('/sell-update', async (req, res) => {
     if (!request) return res.status(404).json({ msg: 'Request not found' });
 
     const toStatus =
-      normalized === 'approve' ? 'Approved' :
-      normalized === 'approved' ? 'Approved' :
-      normalized === 'reject' ? 'Rejected' :
-      normalized === 'rejected' ? 'Rejected' :
-      normalized === 'freeze' ? 'Frozen' :
-      normalized === 'frozen' ? 'Frozen' :
-      normalized === 'transfer' ? 'Transfer' :
-      'Approved';
+      normalized === 'approve' || normalized === 'approved' ? 'Approved' :
+      normalized === 'reject' || normalized === 'rejected' ? 'Rejected' :
+      normalized === 'freeze' || normalized === 'frozen' ? 'Frozen' :
+      normalized === 'transfer' ? 'Transfer' : 'Approved';
 
-    // Deduct once when moving out of Pending to a deducting state
     const movingOutOfPending = request.status === 'Pending' && ['Approved', 'Frozen', 'Transfer'].includes(toStatus);
 
     if (movingOutOfPending) {
@@ -202,16 +171,14 @@ router.post('/sell-update', async (req, res) => {
       if (!user) return res.status(404).json({ msg: 'User not found' });
 
       if (!user.wallet || typeof user.wallet !== 'object') user.wallet = {};
-      if (!user.agent) user.agent = 'AG1001'; // ✅ valid enum fallback
+      if (!user.agent) user.agent = 'UNASSIGNED';
 
       const sym = String(request.symbol || '').toLowerCase();
       const amount = Number(request.amount) || 0;
       const owned = Number(user.wallet[sym] || 0);
-
       if (owned < amount) {
         return res.status(400).json({ msg: `User does not have enough ${sym}` });
       }
-
       user.wallet[sym] = owned - amount;
       user.markModified('wallet');
       await user.save();
@@ -229,24 +196,13 @@ router.post('/sell-update', async (req, res) => {
 });
 
 /* =========================
- * USERS OVERVIEW (for your new admin table idea)
+ * USERS OVERVIEW (for your planned table)
  * ========================= */
-
-// GET /api/admin/users/overview
-// Returns: [{ _id, name, email, agent, isApproved, createdAt, lastLoginAt, lastLoginIp, wallet, aiSim: { simulatedValue, lastUpdated } }]
 router.get('/users/overview', async (req, res) => {
   try {
-    const users = await User.find(
-      {},
-      'name email agent isApproved createdAt lastLoginAt lastLoginIp wallet'
-    ).lean();
-
+    const users = await User.find({}, 'name email agent isApproved createdAt lastLoginAt lastLoginIp wallet').lean();
     const ids = users.map(u => u._id);
-    const sims = await CryptoAISim.find(
-      { userId: { $in: ids } },
-      'userId simulatedValue lastUpdated'
-    ).lean();
-
+    const sims = await CryptoAISim.find({ userId: { $in: ids } }, 'userId simulatedValue lastUpdated').lean();
     const simMap = new Map(sims.map(s => [String(s.userId), s]));
 
     const out = users.map(u => ({
