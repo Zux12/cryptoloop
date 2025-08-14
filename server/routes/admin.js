@@ -204,4 +204,33 @@ router.post('/sell-update', async (req, res) => {
   }
 });
 
+// GET /api/admin/users/overview
+// Returns: [{ _id, name, email, agent, isApproved, createdAt, lastLoginAt, lastLoginIp, wallet, aiSim: { simulatedValue, lastUpdated } }]
+const CryptoAISim = require('../models/CryptoAISim');
+
+router.get('/users/overview', async (req, res) => {
+  try {
+    // 1) pull users (light projection keeps payload small)
+    const users = await User.find({}, 'name email agent isApproved createdAt lastLoginAt lastLoginIp wallet').lean();
+
+    // 2) map userIds to get AI sims in one query
+    const ids = users.map(u => u._id);
+    const sims = await CryptoAISim.find({ userId: { $in: ids } }, 'userId simulatedValue lastUpdated').lean();
+    const simMap = new Map(sims.map(s => [String(s.userId), s]));
+
+    // 3) attach aiSim to each user
+    const out = users.map(u => ({
+      ...u,
+      aiSim: simMap.get(String(u._id)) || null
+    }));
+
+    res.json(out);
+  } catch (e) {
+    console.error('❌ /api/admin/users/overview:', e);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
+
+
 module.exports = router;
