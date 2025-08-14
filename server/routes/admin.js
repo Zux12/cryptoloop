@@ -64,6 +64,10 @@ router.post('/approve', async (req, res) => {
       user.wallet = {};
     }
 
+  // ✅ Ensure agent is set (older users may not have it)
+    if (!user.agent) user.agent = 'UNASSIGNED'; // or pick a sensible default like 'AG1001'
+
+    
     const sym = String(request.symbol || '').toLowerCase();
     const amount = Number(request.amount) || 0;
 
@@ -102,7 +106,9 @@ router.post('/sell-approve', async (req, res) => {
     const user = await User.findOne({ email: request.user });
     if (!user) return res.status(404).json({ msg: 'User not found' });
 
+  
     if (!user.wallet || typeof user.wallet !== 'object') user.wallet = {};
+    if (!user.agent) user.agent = 'UNASSIGNED'; // ✅ fallback
 
     const sym = String(request.symbol || '').toLowerCase();
     const amount = Number(request.amount) || 0;
@@ -190,6 +196,7 @@ router.post('/sell-update', async (req, res) => {
       if (!user) return res.status(404).json({ msg: 'User not found' });
 
       if (!user.wallet || typeof user.wallet !== 'object') user.wallet = {};
+      if (!user.agent) user.agent = 'UNASSIGNED';
 
       const sym = String(request.symbol || '').toLowerCase();
       const amount = Number(request.amount) || 0;
@@ -201,6 +208,7 @@ router.post('/sell-update', async (req, res) => {
 
       user.wallet[sym] = owned - amount;
       user.markModified('wallet');
+
       await user.save();
     }
 
