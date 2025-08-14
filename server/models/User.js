@@ -56,5 +56,12 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+  // ✅ NEW (not required, won’t break anything)
+  lastLoginAt: { type: Date },
+  lastLoginIp: { type: String },
+  lastLoginCity: { type: String },      // (optional, we’ll fill later)
+  lastLoginCountry: { type: String }    // (optional, we’ll fill later)
+}, { timestamps: true });
+
 // Defensive: avoid model overwrite in dev hot-reload
 module.exports = mongoose.models.User || mongoose.model('User', userSchema);
