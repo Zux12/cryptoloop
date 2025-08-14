@@ -84,185 +84,56 @@
 
 
 <script>
-  // Require login
+  // Redirect if not logged in
   if (!localStorage.getItem('token')) {
     window.location.href = '/login.html';
   }
 
   const statusMsg = document.getElementById('status-msg');
 
-  // --- Buy Requests ---
-  async function fetchRequests() {
-    const token = localStorage.getItem('token');
-    try {
-      const res = await fetch('/api/admin/buy-requests', {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      if (!res.ok) {
-        const errText = await res.text();
-        console.error("❌ Failed to load buy requests:", errText);
-        return;
-      }
-      const data = await res.json();
-      renderBuyTable(data);
-    } catch (err) {
-      console.error("❌ Exception in fetchRequests:", err);
+  // Tiny logger that also writes to a debug area
+  function log(...args) {
+    console.log(...args);
+    let box = document.getElementById('debug-box');
+    if (!box) {
+      box = document.createElement('pre');
+      box.id = 'debug-box';
+      box.className = 'mt-4 p-3 bg-gray-800 text-xs text-gray-200 rounded overflow-x-auto';
+      statusMsg.insertAdjacentElement('afterend', box);
     }
+    box.textContent += args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ') + '\n';
   }
 
-  function renderBuyTable(requests) {
-    const buyTable = document.getElementById('admin-buy-request-body');
-    buyTable.innerHTML = '';
-    if (!requests.length) {
-      buyTable.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 p-4">No pending buy requests</td></tr>';
-      return;
-    }
-    requests.forEach(req => {
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td class="p-2 border">${req.user}</td>
-        <td class="p-2 border">${req.symbol}</td>
-        <td class="p-2 border">$${req.usd}</td>
-        <td class="p-2 border">${req.amount}</td>
-        <td class="p-2 border">${new Date(req.timestamp).toLocaleString()}</td>
-        <td class="p-2 border text-center space-x-2">
-          <button onclick="handleBuyAction('${req._id}', 'approve')" class="text-green-400 hover:text-green-600 font-semibold">✅ Approve</button>
-          <button onclick="handleBuyAction('${req._id}', 'reject')" class="text-red-400 hover:text-red-600 font-semibold">❌ Reject</button>
-        </td>
-      `;
-      buyTable.appendChild(row);
-    });
-  }
-
-  // Matches backend: POST /api/admin/approve  (body: { id })
-  // If you later add a buy-reject endpoint, change 'reject' branch accordingly.
-  async function handleBuyAction(id, action) {
-    const token = localStorage.getItem('token');
-    let endpoint;
-    if (action === 'approve') {
-      endpoint = '/api/admin/approve';
-    } else if (action === 'reject') {
-      // You don't have a buy-reject route in backend yet; this will 404.
-      // Either add a route in backend or remove this button from UI.
-      endpoint = '/api/admin/reject';
-    }
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + token
-      },
-      body: JSON.stringify({ id })
-    });
-
-    const out = await res.text();
-    if (res.ok) {
-      statusMsg.textContent = `✅ Request ${action}d successfully`;
-      fetchRequests();
-    } else {
-      console.error('❌ Buy action failed:', out);
-      statusMsg.textContent = '❌ Failed to update request';
-    }
-    setTimeout(() => statusMsg.textContent = '', 3000);
-  }
-
-  // --- Sell Requests ---
-  async function fetchSellRequests() {
-    const token = localStorage.getItem('token');
-    try {
-      const res = await fetch('/api/admin/sell-requests', {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      const data = await res.json();
-      renderSellTable(data);
-    } catch (err) {
-      console.error("❌ Failed to load sell requests:", err);
-    }
-  }
-
-  function renderSellTable(requests) {
-    const body = document.getElementById('admin-sell-body');
-    body.innerHTML = '';
-    if (!requests.length) {
-      body.innerHTML = '<tr><td colspan="7" class="text-center text-gray-400 p-4">No pending sell requests</td></tr>';
-      return;
-    }
-    requests.forEach(req => {
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td class="p-2 border">${req.user}</td>
-        <td class="p-2 border">${req.symbol}</td>
-        <td class="p-2 border">${req.amount}</td>
-        <td class="p-2 border">${new Date(req.timestamp).toLocaleString()}</td>
-        <td class="p-2 border">${req.status}</td>
-        <td class="p-2 border">${req.statusTimestamp ? new Date(req.statusTimestamp).toLocaleString() : '-'}</td>
-        <td class="p-2 border text-center space-x-2">
-          ${req.status === 'Pending' || req.status === 'Frozen' ? `
-            <button onclick="updateSellStatus('${req._id}', 'approve')" class="text-green-400 hover:text-green-600 font-semibold">✅ Approve</button>
-            <button onclick="updateSellStatus('${req._id}', 'reject')" class="text-red-400 hover:text-red-600 font-semibold">❌ Reject</button>
-            <button onclick="updateSellStatus('${req._id}', 'frozen')" class="text-yellow-400 hover:text-yellow-600 font-semibold">🧊 Freeze</button>
-            <button onclick="updateSellStatus('${req._id}', 'transfer')" class="text-blue-400 hover:text-blue-600 font-semibold">💸 Transfer</button>
-          ` : '—'}
-        </td>
-      `;
-      body.appendChild(row);
-    });
-  }
-
-  // Matches backend: POST /api/admin/sell-update  (body: { id, status })
-  async function updateSellStatus(id, status) {
-    const token = localStorage.getItem('token');
-    const res = await fetch('/api/admin/sell-update', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + token
-      },
-      body: JSON.stringify({ id, status })
-    });
-
-    const data = await res.json();
-    if (res.ok) {
-      statusMsg.textContent = `✅ ${status} successful`;
-      fetchSellRequests();
-    } else {
-      console.error('❌ sell-update failed:', data);
-      statusMsg.textContent = `❌ ${data.msg || 'Update failed'}`;
-    }
-    setTimeout(() => statusMsg.textContent = '', 3000);
+  async function fetchJSON(url, opts = {}) {
+    const token = localStorage.getItem('token') || '';
+    const headers = {
+      ...(opts.headers || {}),
+      Authorization: token ? 'Bearer ' + token : undefined,
+      'Content-Type': 'application/json',
+    };
+    const res = await fetch(url, { ...opts, headers });
+    const text = await res.text();
+    let json;
+    try { json = text ? JSON.parse(text) : null; } catch { json = null; }
+    log('🛰️', opts.method || 'GET', url, '→', res.status, res.statusText, '| body:', text.slice(0, 300));
+    return { ok: res.ok, status: res.status, data: json, raw: text };
   }
 
   // --- Users (Approval) ---
   async function loadUsers() {
-    const token = localStorage.getItem('token');
-    try {
-      const res = await fetch('/api/admin/users', {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      if (res.status === 401 || res.status === 403) {
-        statusMsg.textContent = '⛔ Admin access required.';
-        setTimeout(() => (window.location.href = '/login.html'), 1200);
-        return;
-      }
-      const users = await res.json();
-      renderUsers(users);
-    } catch (err) {
-      console.error('❌ Failed to load users:', err);
-      statusMsg.textContent = '❌ Failed to load users';
-    }
-  }
-
-  function renderUsers(users) {
+    const r = await fetchJSON('/api/admin/users');
     const tbody = document.getElementById('admin-users-body');
     tbody.innerHTML = '';
-
-    if (!Array.isArray(users) || users.length === 0) {
-      tbody.innerHTML = `<tr>
-        <td class="p-3 text-center text-gray-400" colspan="6">No users found</td>
-      </tr>`;
+    if (!r.ok) {
+      tbody.innerHTML = `<tr><td colspan="6" class="p-3 text-center text-red-400">❌ /api/admin/users ${r.status} — ${r.raw || 'Failed'}</td></tr>`;
+      if (r.status === 401 || r.status === 403) statusMsg.textContent = '⛔ Admin access required.';
       return;
     }
-
+    const users = Array.isArray(r.data) ? r.data : [];
+    if (!users.length) {
+      tbody.innerHTML = `<tr><td colspan="6" class="p-3 text-center text-gray-400">No users found</td></tr>`;
+      return;
+    }
     tbody.innerHTML = users.map(u => `
       <tr class="border-b border-gray-700">
         <td class="p-2 border">${u.email}</td>
@@ -282,51 +153,119 @@
     `).join('');
   }
 
-  // Matches backend: POST /api/admin/users/:id/approve
   async function approveUser(id) {
-    const token = localStorage.getItem('token');
-    try {
-      const res = await fetch(`/api/admin/users/${id}/approve`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer ' + token
-        }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.msg || 'Approve failed');
+    const r = await fetchJSON(`/api/admin/users/${id}/approve`, { method: 'POST' });
+    if (r.ok) {
       statusMsg.textContent = '✅ User approved';
       await loadUsers();
-    } catch (err) {
-      console.error('❌', err);
-      statusMsg.textContent = '❌ Failed to approve user';
-    } finally {
-      setTimeout(() => statusMsg.textContent = '', 2500);
+    } else {
+      statusMsg.textContent = `❌ Approve failed: ${r.raw || r.status}`;
     }
+    setTimeout(() => statusMsg.textContent = '', 2500);
   }
 
-  // Matches backend: POST /api/admin/users/:id/reject
   async function rejectUser(id) {
-    const token = localStorage.getItem('token');
     if (!confirm('Remove this user?')) return;
-    try {
-      const res = await fetch(`/api/admin/users/${id}/reject`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer ' + token
-        }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.msg || 'Reject failed');
+    const r = await fetchJSON(`/api/admin/users/${id}/reject`, { method: 'POST' });
+    if (r.ok) {
       statusMsg.textContent = '✅ User removed';
       await loadUsers();
-    } catch (err) {
-      console.error('❌', err);
-      statusMsg.textContent = '❌ Failed to remove user';
-    } finally {
-      setTimeout(() => statusMsg.textContent = '', 2500);
+    } else {
+      statusMsg.textContent = `❌ Reject failed: ${r.raw || r.status}`;
     }
+    setTimeout(() => statusMsg.textContent = '', 2500);
+  }
+
+  // --- Buy Requests ---
+  async function fetchRequests() {
+    const r = await fetchJSON('/api/admin/buy-requests');
+    const buyTable = document.getElementById('admin-buy-request-body');
+    buyTable.innerHTML = '';
+    if (!r.ok) {
+      buyTable.innerHTML = `<tr><td colspan="6" class="p-3 text-center text-red-400">❌ /api/admin/buy-requests ${r.status} — ${r.raw || 'Failed'}</td></tr>`;
+      return;
+    }
+    const rows = Array.isArray(r.data) ? r.data : [];
+    if (!rows.length) {
+      buyTable.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 p-4">No pending buy requests</td></tr>';
+      return;
+    }
+    rows.forEach(req => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="p-2 border">${req.user}</td>
+        <td class="p-2 border">${req.symbol}</td>
+        <td class="p-2 border">$${req.usd}</td>
+        <td class="p-2 border">${req.amount}</td>
+        <td class="p-2 border">${new Date(req.timestamp).toLocaleString()}</td>
+        <td class="p-2 border text-center space-x-2">
+          <button onclick="handleBuyAction('${req._id}', 'approve')" class="text-green-400 hover:text-green-600 font-semibold">✅ Approve</button>
+          <button onclick="handleBuyAction('${req._id}', 'reject')" class="text-red-400 hover:text-red-600 font-semibold">❌ Reject</button>
+        </td>
+      `;
+      buyTable.appendChild(tr);
+    });
+  }
+
+  async function handleBuyAction(id, action) {
+    let endpoint;
+    if (action === 'approve') endpoint = '/api/admin/approve';
+    else if (action === 'reject') endpoint = '/api/admin/reject'; // will 404 unless you add it server-side
+    const r = await fetchJSON(endpoint, { method: 'POST', body: JSON.stringify({ id }) });
+    if (r.ok) {
+      statusMsg.textContent = `✅ Request ${action}d successfully`;
+      fetchRequests();
+    } else {
+      statusMsg.textContent = `❌ Buy ${action} failed: ${r.raw || r.status}`;
+    }
+    setTimeout(() => statusMsg.textContent = '', 3000);
+  }
+
+  // --- Sell Requests ---
+  async function fetchSellRequests() {
+    const r = await fetchJSON('/api/admin/sell-requests');
+    const body = document.getElementById('admin-sell-body');
+    body.innerHTML = '';
+    if (!r.ok) {
+      body.innerHTML = `<tr><td colspan="7" class="p-3 text-center text-red-400">❌ /api/admin/sell-requests ${r.status} — ${r.raw || 'Failed'}</td></tr>`;
+      return;
+    }
+    const requests = Array.isArray(r.data) ? r.data : [];
+    if (!requests.length) {
+      body.innerHTML = '<tr><td colspan="7" class="text-center text-gray-400 p-4">No pending sell requests</td></tr>';
+      return;
+    }
+    requests.forEach(req => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="p-2 border">${req.user}</td>
+        <td class="p-2 border">${req.symbol}</td>
+        <td class="p-2 border">${req.amount}</td>
+        <td class="p-2 border">${new Date(req.timestamp).toLocaleString()}</td>
+        <td class="p-2 border">${req.status}</td>
+        <td class="p-2 border">${req.statusTimestamp ? new Date(req.statusTimestamp).toLocaleString() : '-'}</td>
+        <td class="p-2 border text-center space-x-2">
+          ${req.status === 'Pending' || req.status === 'Frozen' ? `
+            <button onclick="updateSellStatus('${req._id}', 'approve')" class="text-green-400 hover:text-green-600 font-semibold">✅ Approve</button>
+            <button onclick="updateSellStatus('${req._id}', 'reject')" class="text-red-400 hover:text-red-600 font-semibold">❌ Reject</button>
+            <button onclick="updateSellStatus('${req._id}', 'frozen')" class="text-yellow-400 hover:text-yellow-600 font-semibold">🧊 Freeze</button>
+            <button onclick="updateSellStatus('${req._id}', 'transfer')" class="text-blue-400 hover:text-blue-600 font-semibold">💸 Transfer</button>
+          ` : '—'}
+        </td>
+      `;
+      body.appendChild(tr);
+    });
+  }
+
+  async function updateSellStatus(id, status) {
+    const r = await fetchJSON('/api/admin/sell-update', { method: 'POST', body: JSON.stringify({ id, status }) });
+    if (r.ok) {
+      statusMsg.textContent = `✅ ${status} successful`;
+      fetchSellRequests();
+    } else {
+      statusMsg.textContent = `❌ sell-update failed: ${r.raw || r.status}`;
+    }
+    setTimeout(() => statusMsg.textContent = '', 3000);
   }
 
   function logout() {
@@ -334,13 +273,26 @@
     window.location.href = '/login.html';
   }
 
-  // Initial loads
+  // --- Sanity ping: confirm we are authenticated and who we are
+  (async function sanity() {
+    const who = await fetchJSON('/api/auth/me');
+    if (who.ok) {
+      log('👤 /api/auth/me →', who.data);
+      if (!who.data?.isAdmin) {
+        statusMsg.textContent = '⛔ You are not an admin.';
+      }
+    } else {
+      log('❌ /api/auth/me failed', who.status, who.raw);
+      statusMsg.textContent = '❌ Auth check failed. Please log in again.';
+    }
+  })();
+
+  // Kick everything off
+  loadUsers();
   fetchRequests();
   fetchSellRequests();
-  loadUsers();
-
-  console.log("📜 Raw token:", localStorage.getItem('token'));
 </script>
+
 
 </body>
 </html>
