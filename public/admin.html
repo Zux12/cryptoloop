@@ -97,6 +97,9 @@
         <th class="p-2 border">TPV (USD)</th>
         <th class="p-2 border">AI Value</th>
         <th class="p-2 border">AI Updated</th>
+        <th class="p-2 border">Last Login</th>
+        <th class="p-2 border">Location</th>
+
       </tr>
     </thead>
     <tbody id="admin-accounts-body" class="text-white"></tbody>
@@ -344,29 +347,35 @@ async function loadAccountsOverview() {
     return;
   }
 
-  // Build table first (TPV will be filled later)
-  tbody.innerHTML = rows.map(u => {
-    const w = u.wallet || {};
-    const walletShort = Object.keys(w).length ? Object.entries(w).map(([k,v])=>`${k.toUpperCase()}:${(+v).toFixed(6)}`).join(', ') : '—';
-    return `
-      <tr class="border-b border-gray-700" data-user-id="${u._id}">
-        <td class="p-2 border">${u.name || '-'}</td>
-        <td class="p-2 border">${u.email}</td>
-        <td class="p-2 border">${u.agent || '-'}</td>
-        <td class="p-2 border">${u.isApproved ? '✅' : '❌'}</td>
-        <td class="p-2 border">${u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : '-'}</td>
-        <td class="p-2 border">${u.lastLoginIp || '-'}</td>
-        <td class="p-2 border">${walletShort}</td>
-        <td class="p-2 border tpv-cell">…</td>
-        <td class="p-2 border">${u.aiSim?.simulatedValue != null ? '$' + (+u.aiSim.simulatedValue).toFixed(2) : '—'}</td>
-        <td class="p-2 border">${u.aiSim?.lastUpdated ? new Date(u.aiSim.lastUpdated).toLocaleString() : '—'}</td>
-      </tr>
-    `;
-  }).join('');
+ // Build table first (TPV will be filled later)
+tbody.innerHTML = rows.map(u => {
+  const w = u.wallet || {};
+  const walletShort = Object.keys(w).length
+    ? Object.entries(w)
+        .map(([k, v]) => `${k.toUpperCase()}:${(+v).toFixed(6)}`)
+        .join(', ')
+    : '—';
 
-  // Compute TPV for everyone in one shot (union of coin IDs)
-  await fillTPV(rows);
-}
+  const location = [u.lastLoginCity, u.lastLoginCountry].filter(Boolean).join(', ') || '—';
+
+  return `
+    <tr class="border-b border-gray-700" data-user-id="${u._id}">
+      <td class="p-2 border">${u.name || '-'}</td>
+      <td class="p-2 border">${u.email}</td>
+      <td class="p-2 border">${u.agent || '-'}</td>
+      <td class="p-2 border">${u.isApproved ? '✅' : '❌'}</td>
+      <td class="p-2 border">${u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : '-'}</td>
+      <td class="p-2 border">${location}</td>
+      <td class="p-2 border">${walletShort}</td>
+      <td class="p-2 border tpv-cell">…</td>
+      <td class="p-2 border">${u.aiSim?.simulatedValue != null ? '$' + (+u.aiSim.simulatedValue).toFixed(2) : '—'}</td>
+      <td class="p-2 border">${u.aiSim?.lastUpdated ? new Date(u.aiSim.lastUpdated).toLocaleString() : '—'}</td>
+    </tr>
+  `;
+}).join('');
+
+// Compute TPV for everyone in one shot (union of coin IDs)
+await fillTPV(rows);
 
 // Fetch prices once and fill TPV cells
 async function fillTPV(users) {
@@ -384,7 +393,6 @@ async function fillTPV(users) {
   if (!uniqueIds.length) return;
 
   // pull current prices
-  // You can switch to /simple/price for lighter payloads; this one is simple too:
   const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(uniqueIds.join(','))}&vs_currencies=usd`;
   let prices = {};
   try {
@@ -404,10 +412,11 @@ async function fillTPV(users) {
       const p = prices[id]?.usd || 0;
       tpv += (+amt) * (+p);
     }
-    const row = document.querySelector(`tr[data-user-id="${u._id}"] .tpv-cell`);
-    if (row) row.textContent = `$${tpv.toFixed(2)}`;
+    const tpvCell = document.querySelector(`tr[data-user-id="${u._id}"] .tpv-cell`);
+    if (tpvCell) tpvCell.textContent = `$${tpv.toFixed(2)}`;
   });
 }
+
 
 
 
