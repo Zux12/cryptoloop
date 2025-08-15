@@ -30,6 +30,7 @@ function mountRoute(routePath, modulePath) {
     console.log(`✅ Mounted ${routePath} from ${modulePath}`);
   } catch (err) {
     console.error(`🔥 Crash in ${routePath}:`, err.message);
+    console.error(err.stack); // <-- shows the exact file & line
   }
 }
 
