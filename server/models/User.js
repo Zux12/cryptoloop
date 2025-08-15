@@ -20,6 +20,8 @@ const userSchema = new mongoose.Schema(
       index: true
     },
 
+
+    
     // admin gate
     isApproved: { type: Boolean, default: false, index: true },
 
