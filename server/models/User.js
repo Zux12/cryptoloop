@@ -1,67 +1,43 @@
+// models/User.js
 const mongoose = require('mongoose');
 
 const AGENTS = Array.from({ length: 20 }, (_, i) => `AG${1001 + i}`);
 
 const userSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: true,
-      trim: true
-    },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      index: true
-    },
-    // Store a HASHED password string here (bcrypt result), even if the field is named "password"
-    password: {
-      type: String,
-      required: true
-    },
-    // New: which agent the user selected during signup
+    name: { type: String, required: true, trim: true },
+
+    email: { type: String, required: true, unique: true, lowercase: true, index: true },
+
+    // store the HASHED password (bcrypt result)
+    password: { type: String, required: true },
+
+    // agent selected at signup; allow legacy users by permitting UNASSIGNED
     agent: {
       type: String,
-      enum: AGENTS,
-      required: true
-    },
-    // New: admin must approve before login works
-    isApproved: {
-      type: Boolean,
-      default: false,
+      enum: [...AGENTS, 'UNASSIGNED'],
+      default: 'UNASSIGNED',
       index: true
     },
-    // New: mark admin users
-    isAdmin: {
-      type: Boolean,
-      default: false,
-      index: true
-    },
-    // You already had wallet — keep as-is
-    wallet: {
-      type: mongoose.Schema.Types.Mixed,
-      default: {}
-    },
-    // New: record creation time
-    createdAt: {
-      type: Date,
-      default: Date.now
-    }
+
+    // admin gate
+    isApproved: { type: Boolean, default: false, index: true },
+
+    // admins
+    isAdmin: { type: Boolean, default: false, index: true },
+
+    // flexible symbol -> amount
+    wallet: { type: mongoose.Schema.Types.Mixed, default: {} },
+
+    // audit / login info (optional)
+    lastLoginAt: { type: Date },
+    lastLoginIp: { type: String },
+    lastLoginCity: { type: String },
+    lastLoginCountry: { type: String }
   },
   {
-    // Optional: also add updatedAt automatically
-    timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }
+    timestamps: true // adds createdAt, updatedAt
   }
 );
 
-  // ✅ NEW (not required, won’t break anything)
-  lastLoginAt: { type: Date },
-  lastLoginIp: { type: String },
-  lastLoginCity: { type: String },      // (optional, we’ll fill later)
-  lastLoginCountry: { type: String }    // (optional, we’ll fill later)
-}, { timestamps: true });
-
-// Defensive: avoid model overwrite in dev hot-reload
 module.exports = mongoose.models.User || mongoose.model('User', userSchema);
