@@ -442,7 +442,7 @@ async function loadAccountsOverview() {
 
   // Compute TPV for everyone in one shot (union of coin IDs)
   await fillTPV(rows);
-} // <-- ✅ this was missing
+}
 
 // Fetch prices once and fill TPV cells
 async function fillTPV(users) {
@@ -483,8 +483,6 @@ async function fillTPV(users) {
     if (tpvCell) tpvCell.textContent = `$${tpv.toFixed(2)}`;
   });
 }
-
-
 
 
 
