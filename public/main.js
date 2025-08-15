@@ -970,46 +970,61 @@ document.getElementById("add-coin").addEventListener("click", () => {
   
 //end add coin  
   
-async function loadCryptoAIStateFromDB(base) {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch('/api/ai/load', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const saved = await res.json();
-      if (saved?.simulatedValue && saved?.lastUpdated) {
-        const elapsed = Math.floor((Date.now() - new Date(saved.lastUpdated)) / 5000);
-        let value = saved.simulatedValue;
-        for (let i = 0; i < elapsed; i++) {
-          value *= 1 + (Math.random() * 0.000004 - 0.000001); // small passive gain to 60% over 30 days
-        }
-        return value;
-      }
-      return base;
-    } catch (err) {
-      console.warn("Failed to load from MongoDB. Using base.");
-      return base;
+// Load AI state and normalize against current TPV so profits don't spike
+async function loadCryptoAIStateFromDB(currentTPV) {
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch('/api/ai/load', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!res.ok) throw new Error('load failed');
+
+    const saved = await res.json(); // { simulatedValue, lastUpdated, baseValue }
+    let simulatedValue, baseValue;
+
+    if (saved && typeof saved.simulatedValue === 'number' && typeof saved.baseValue === 'number') {
+      // keep absolute profit constant if TPV moved (e.g., after admin approves a sell)
+      const savedProfit = saved.simulatedValue - saved.baseValue;
+
+      // Re-anchor to the latest TPV (this is the new baseline)
+      baseValue = currentTPV;
+
+      // Keep the same absolute profit
+      simulatedValue = baseValue + savedProfit;
+    } else {
+      // first-time: start baseline at current TPV
+      baseValue = currentTPV;
+      simulatedValue = currentTPV;
     }
+
+    return { simulatedValue, baseValue };
+  } catch (err) {
+    console.warn("Failed to load AI state; using TPV as baseline.", err);
+    return { simulatedValue: currentTPV, baseValue: currentTPV };
   }
-  
-  async function saveCryptoAIStateToDB(simulatedValue) {
-    try {
-      const token = localStorage.getItem("token");
-      await fetch('/api/ai/save', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          simulatedValue,
-          lastUpdated: new Date().toISOString()
-        })
-      });
-    } catch (err) {
-      console.warn("Failed to save AI state to MongoDB.");
-    }
+}
+
+async function saveCryptoAIStateToDB(simulatedValue, baseValue) {
+  try {
+    const token = localStorage.getItem("token");
+    await fetch('/api/ai/save', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        simulatedValue,
+        baseValue,                // ⬅️ persist the baseline
+        lastUpdated: new Date().toISOString()
+      })
+    });
+  } catch (err) {
+    console.warn("Failed to save AI state to MongoDB.", err);
   }
+}
+
   
   const buyForm = document.getElementById('buy-form');
 if (buyForm && !buyForm.hasSubmitListener) {
