@@ -1,8 +1,7 @@
 // routes/cryptoAi.js
 const express = require('express');
 const { requireAuth } = require('../middleware/authMiddleware');
-// ⚠️ Use the exact filename case that exists on disk: models/cryptoAISim.js
-const CryptoAISim = require('../models/cryptoAISim');
+const CryptoAISim = require('../models/cryptoAISim'); // make sure filename matches exactly
 
 const router = express.Router();
 
@@ -12,15 +11,22 @@ router.use(requireAuth);
 /**
  * GET /api/ai/load
  * Returns the last saved state for this user.
- * { simulatedValue: number|null, lastUpdated: string|null }
+ * { simulatedValue, lastUpdated, baseValue }
  */
 router.get('/load', async (req, res) => {
   try {
     const doc = await CryptoAISim.findOne({ userId: req.user.uid });
-    if (!doc) return res.json({ simulatedValue: null, lastUpdated: null });
+    if (!doc) {
+      return res.json({
+        simulatedValue: null,
+        lastUpdated: null,
+        baseValue: null
+      });
+    }
     res.json({
       simulatedValue: doc.simulatedValue,
-      lastUpdated: doc.lastUpdated
+      lastUpdated: doc.lastUpdated,
+      baseValue: doc.baseValue ?? null
     });
   } catch (err) {
     console.error('GET /ai/load error:', err);
@@ -30,27 +36,37 @@ router.get('/load', async (req, res) => {
 
 /**
  * POST /api/ai/save
- * Body: { simulatedValue: number }
+ * Body: { simulatedValue: number, baseValue?: number }
  * Upserts per-user state
  */
 router.post('/save', async (req, res) => {
   try {
-    const { simulatedValue } = req.body || {};
+    const { simulatedValue, baseValue } = req.body || {};
     if (typeof simulatedValue !== 'number' || !isFinite(simulatedValue)) {
       return res.status(400).json({ msg: 'Invalid simulatedValue' });
     }
 
-    const now = new Date();
+    const update = {
+      simulatedValue,
+      lastUpdated: new Date()
+    };
+
+    // Only set baseValue if it’s provided
+    if (typeof baseValue === 'number' && isFinite(baseValue)) {
+      update.baseValue = baseValue;
+    }
+
     const doc = await CryptoAISim.findOneAndUpdate(
       { userId: req.user.uid },
-      { $set: { simulatedValue, lastUpdated: now } },
-      { upsert: true, new: true }
+      { $set: update },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
     res.json({
       ok: true,
       simulatedValue: doc.simulatedValue,
-      lastUpdated: doc.lastUpdated
+      lastUpdated: doc.lastUpdated,
+      baseValue: doc.baseValue ?? null
     });
   } catch (err) {
     console.error('POST /ai/save error:', err);
@@ -58,4 +74,4 @@ router.post('/save', async (req, res) => {
   }
 });
 
-module.exports = router; // 👈 IMPORTANT: export the router function
+module.exports = router;
