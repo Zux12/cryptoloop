@@ -4,7 +4,7 @@ const { requireAuth, requireAdmin } = require('../middleware/authMiddleware');
 const BuyRequest = require('../models/BuyRequest');
 const SellRequest = require('../models/SellRequest');
 const User = require('../models/User');
-const CryptoAISim = require('../models/CryptoAISim');
+const CryptoAISim = require('../models/cryptoAISim');
 
 const router = express.Router();
 
