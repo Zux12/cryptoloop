@@ -1,43 +1,34 @@
+// middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
 
-// ✅ Require authentication (valid JWT)
-const requireAuth = (req, res, next) => {
-  const authHeader = req.headers.authorization || '';
-  console.log("🔐 Checking auth header:", authHeader);
+const JWT_SECRET = process.env.JWT_SECRET || 'devsecret';
 
-  if (!authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ msg: 'Access denied. No token provided.' });
-  }
-
-  const token = authHeader.split(' ')[1];
-
+// Attach req.user = { uid, isAdmin } or 401
+function requireAuth(req, res, next) {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("📦 Decoded token payload:", decoded);
-
-    // Expecting token to have: { uid, isAdmin, ... }
-    req.user = {
-      uid: decoded.uid,
-      isAdmin: !!decoded.isAdmin
-    };
-
-    console.log("📥 Authenticated user:", req.user);
+    const hdr = req.headers.authorization || '';
+    if (!hdr.startsWith('Bearer ')) {
+      return res.status(401).json({ msg: 'Access denied. No token provided.' });
+    }
+    const token = hdr.slice('Bearer '.length).trim();
+    const decoded = jwt.verify(token, JWT_SECRET);
+    // decoded should contain { uid, isAdmin }
+    if (!decoded || !decoded.uid) {
+      return res.status(401).json({ msg: 'Invalid token' });
+    }
+    req.user = { uid: String(decoded.uid), isAdmin: !!decoded.isAdmin };
     next();
   } catch (err) {
-    console.error("❌ Token verification failed:", err.message);
     return res.status(403).json({ msg: 'Invalid or expired token' });
   }
-};
+}
 
-// ✅ Require admin privileges
-const requireAdmin = (req, res, next) => {
-  if (!req.user?.isAdmin) {
-    return res.status(403).json({ msg: 'Access denied. Admins only.' });
+// Require admin flag or 403
+function requireAdmin(req, res, next) {
+  if (!req.user || !req.user.isAdmin) {
+    return res.status(403).json({ msg: 'Admin only' });
   }
   next();
-};
+}
 
 module.exports = { requireAuth, requireAdmin };
-
-
-
