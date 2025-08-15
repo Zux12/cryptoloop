@@ -246,62 +246,67 @@ async function loadWallet() {
 
 
 // TODO: Insert startAiSimulation() and simulateTrade() with clean logic later...
+// === CryptoAI simulation (stable baseline) ===
 async function startAiSimulation() {
-    const base = window.totalPortfolioValue;
-  
-    if (!base || base <= 0) {
-      document.getElementById("cryptoai-value").textContent = "CryptoAI Profit: (not enough data)";
-      return;
+  const currentTPV = window.totalPortfolioValue;
+
+  if (!currentTPV || currentTPV <= 0) {
+    const el = document.getElementById("cryptoai-value");
+    if (el) el.textContent = "CryptoAI Profit: (not enough data)";
+    return;
+  }
+
+  // Load saved state & normalize against current TPV to avoid spikes
+  const { simulatedValue: loadedSim, baseValue: loadedBase } = await loadCryptoAIStateFromDB(currentTPV);
+
+  // Local state for this session
+  let simulatedValue = loadedSim;
+  let baseValue = loadedBase;
+
+  updateCryptoAIValueDisplay(simulatedValue, baseValue);
+
+  aiSimTable = document.getElementById("ai-sim-table");
+  aiThoughtsBox = document.getElementById("ai-thoughts") || createThoughtBox();
+  if (aiSimTable) aiSimTable.innerHTML = "";
+
+  const thoughts = [
+    "Analyzing ETH trends...",
+    "High confidence in BTC rebound",
+    "Monitoring whale activity...",
+    "Slight dip — holding assets",
+    "Scanning for entry points...",
+    "News suggests caution — minor sell-off"
+  ];
+
+  const sentiments = [
+    { mood: "Bullish", range: [0.0001, 0.0003], weight: 30 },
+    { mood: "Neutral", range: [-0.00005, 0.0001], weight: 25 },
+    { mood: "Bearish", range: [-0.0003, -0.0001], weight: 45 }
+  ];
+
+  function pickSentiment() {
+    const totalWeight = sentiments.reduce((sum, s) => sum + s.weight, 0);
+    let rand = Math.random() * totalWeight;
+    for (let s of sentiments) {
+      if (rand < s.weight) return s;
+      rand -= s.weight;
     }
-  
-    let simulatedValue = base;
-    const saved = await loadCryptoAIStateFromDB(base);
-    if (saved) simulatedValue = saved;
-  
-    updateCryptoAIValueDisplay(simulatedValue, base);
-  
-    aiSimTable = document.getElementById("ai-sim-table");
-    aiThoughtsBox = document.getElementById("ai-thoughts") || createThoughtBox();
-    aiSimTable.innerHTML = "";
-  
-    const thoughts = [
-      "Analyzing ETH trends...",
-      "High confidence in BTC rebound",
-      "Monitoring whale activity...",
-      "Slight dip — holding assets",
-      "Scanning for entry points...",
-      "News suggests caution — minor sell-off"
-    ];
-  
-const sentiments = [
-  { mood: "Bullish", range: [0.0001, 0.0003], weight: 30 },   
-  { mood: "Neutral", range: [-0.00005, 0.0001], weight: 25 }, 
-  { mood: "Bearish", range: [-0.0003, -0.0001], weight: 45 }  
-];
-  
-    function pickSentiment() {
-      const totalWeight = sentiments.reduce((sum, s) => sum + s.weight, 0);
-      let rand = Math.random() * totalWeight;
-      for (let s of sentiments) {
-        if (rand < s.weight) return s;
-        rand -= s.weight;
-      }
-      return sentiments[0];
-    }
-  
-    async function simulateTrade() {
-      const sentiment = pickSentiment();
-      const percent = (Math.random() * (sentiment.range[1] - sentiment.range[0]) + sentiment.range[0]);
-      const direction = Math.random() < 0.5 ? -1 : 1;
-      const changePercent = direction === -1 && sentiment.mood === "Bullish" ? percent * 0.5 : percent;
-      const finalPercent = sentiment.mood === "Bearish" ? -Math.abs(changePercent) : Math.abs(changePercent);
-  
-      simulatedValue *= 1 + finalPercent / 100;
-      const action = Math.random() > 0.5 ? "Buy" : "Sell";
-  
+    return sentiments[0];
+  }
+
+  async function simulateTrade() {
+    const sentiment = pickSentiment();
+    const percent = (Math.random() * (sentiment.range[1] - sentiment.range[0]) + sentiment.range[0]);
+    const direction = Math.random() < 0.5 ? -1 : 1;
+    const changePercent = direction === -1 && sentiment.mood === "Bullish" ? percent * 0.5 : percent;
+    const finalPercent = sentiment.mood === "Bearish" ? -Math.abs(changePercent) : Math.abs(changePercent);
+
+    simulatedValue *= (1 + finalPercent / 100);
+    const action = Math.random() > 0.5 ? "Buy" : "Sell";
+
+    if (aiSimTable) {
       const row = document.createElement("tr");
-      row.classList.add(action === "Buy" ? "flash-buy" : "flash-sell"); // 👈 add flash
-      
+      row.classList.add(action === "Buy" ? "flash-buy" : "flash-sell");
       row.innerHTML = `
         <td class="px-4 py-2">${new Date().toLocaleTimeString()}</td>
         <td class="px-4 py-2">${action}</td>
@@ -311,16 +316,19 @@ const sentiments = [
       `;
       aiSimTable.prepend(row);
       if (aiSimTable.rows.length > 20) aiSimTable.deleteRow(20);
-  
-      updateCryptoAIValueDisplay(simulatedValue, base);
-      updateAIThought(thoughts);
-  
-      await saveCryptoAIStateToDB(simulatedValue);
     }
-  
-    clearInterval(aiSimInterval);
-    aiSimInterval = setInterval(simulateTrade, 5000);
+
+    updateCryptoAIValueDisplay(simulatedValue, baseValue);
+    updateAIThought(thoughts);
+
+    // ⬅️ Persist BOTH simulatedValue and baseValue
+    await saveCryptoAIStateToDB(simulatedValue, baseValue);
   }
+
+  clearInterval(aiSimInterval);
+  aiSimInterval = setInterval(simulateTrade, 5000);
+}
+
   
   function updateCryptoAIValueDisplay(current, base) {
     const display = document.getElementById("cryptoai-value");
