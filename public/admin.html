@@ -339,6 +339,9 @@ async function rejectUser(id) {
     window.location.href = '/login.html';
   }
 
+  window.logout = logout;
+
+
   // --- Sanity: confirm we’re authenticated and admin (use /api/user/me)
   (async function sanity() {
     const me = await fetchJSON('/api/user/me'); // ✅ correct profile endpoint
