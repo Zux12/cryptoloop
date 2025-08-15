@@ -14,7 +14,9 @@ const cryptoAISimSchema = new mongoose.Schema({
   lastUpdated: {
     type: Date,
     required: true
-  }
+  },
+    // NEW: persistent baseline so UI doesn't jump when wallet/TPV changes
+  baseValue: { type: Number, default: null }
 });
 
 module.exports = mongoose.model('CryptoAISim', cryptoAISimSchema);
