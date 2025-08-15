@@ -108,6 +108,43 @@
 
 
 <script>
+  (async function ensureAdmin() {
+    // If no token, bounce to login
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/login.html';
+      return;
+    }
+
+    // Quick health check to confirm router + auth + admin
+    try {
+      const r = await fetch('/api/admin/ping', {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      if (r.status === 401) {
+        // not authenticated (bad/expired token)
+        localStorage.removeItem('token');
+        alert('Session expired. Please log in again.');
+        window.location.href = '/login.html';
+        return;
+      }
+      if (r.status === 403) {
+        // authenticated but not admin
+        alert('Your account is not an admin.');
+        window.location.href = '/dashboard.html';
+        return;
+      }
+      if (!r.ok) {
+        console.warn('Ping failed:', r.status);
+      }
+    } catch (e) {
+      console.error('Admin ping error:', e);
+    }
+  })();
+
+
+
+  
   // Redirect if not logged in
   if (!localStorage.getItem('token')) {
     window.location.href = '/login.html';
