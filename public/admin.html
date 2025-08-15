@@ -106,51 +106,41 @@
 
 
 <script>
+  // --- quick auth check (keeps your current UX) ---
   (async function ensureAdmin() {
-    // If no token, bounce to login
     const token = localStorage.getItem('token');
     if (!token) {
       window.location.href = '/login.html';
       return;
     }
-
-    // Quick health check to confirm router + auth + admin
     try {
       const r = await fetch('/api/admin/ping', {
         headers: { Authorization: 'Bearer ' + token }
       });
       if (r.status === 401) {
-        // not authenticated (bad/expired token)
         localStorage.removeItem('token');
         alert('Session expired. Please log in again.');
         window.location.href = '/login.html';
         return;
       }
       if (r.status === 403) {
-        // authenticated but not admin
         alert('Your account is not an admin.');
         window.location.href = '/dashboard.html';
         return;
-      }
-      if (!r.ok) {
-        console.warn('Ping failed:', r.status);
       }
     } catch (e) {
       console.error('Admin ping error:', e);
     }
   })();
 
-
-
-  
-  // Redirect if not logged in
+  // Redundant safety redirect
   if (!localStorage.getItem('token')) {
     window.location.href = '/login.html';
   }
 
   const statusMsg = document.getElementById('status-msg');
 
-  // Simple debug logger to a box on the page
+  // --- tiny debug logger to page (optional) ---
   function log(...args) {
     console.log(...args);
     let box = document.getElementById('debug-box');
@@ -163,22 +153,25 @@
     box.textContent += args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ') + '\n';
   }
 
+  // --- fetch helper with auth + logging ---
   async function fetchJSON(url, opts = {}) {
     const token = localStorage.getItem('token') || '';
     const headers = {
-      ...(opts.headers || {}),
-      Authorization: token ? 'Bearer ' + token : undefined,
       'Content-Type': 'application/json',
+      ...(opts.headers || {}),
+      ...(token ? { Authorization: 'Bearer ' + token } : {})
     };
     const res = await fetch(url, { ...opts, headers });
     const text = await res.text();
-    let json;
-    try { json = text ? JSON.parse(text) : null; } catch { json = null; }
-    log('🛰️', opts.method || 'GET', url, '→', res.status, res.statusText, '| body:', text.slice(0, 300));
+    let json = null;
+    try { json = text ? JSON.parse(text) : null; } catch {}
+    log('🛰️', opts.method || 'GET', url, '→', res.status, '| body:', text.slice(0, 300));
     return { ok: res.ok, status: res.status, data: json, raw: text };
   }
 
-  // ---------- USERS (Approval) ----------
+  /* =========================
+   * USERS (Approval)
+   * ========================= */
   async function loadUsers() {
     const r = await fetchJSON('/api/admin/users');
     const tbody = document.getElementById('admin-users-body');
@@ -212,39 +205,40 @@
     `).join('');
   }
 
-async function approveUser(id) {
-  const r = await fetch(`/api/admin/approve/${id}`, {
-    method: 'PATCH',
-    headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }
-  });
-  const data = await r.json().catch(() => ({}));
-  if (r.ok) {
-    statusMsg.textContent = '✅ User approved';
-    await loadUsers();
-  } else {
-    statusMsg.textContent = `❌ Approve failed: ${data.msg || r.status}`;
+  async function approveUser(id) {
+    const r = await fetch(`/api/admin/approve/${id}`, {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }
+    });
+    const data = await r.json().catch(() => ({}));
+    if (r.ok) {
+      statusMsg.textContent = '✅ User approved';
+      await loadUsers();
+    } else {
+      statusMsg.textContent = `❌ Approve failed: ${data.msg || r.status}`;
+    }
+    setTimeout(() => (statusMsg.textContent = ''), 2500);
   }
-  setTimeout(() => (statusMsg.textContent = ''), 2500);
-}
 
-async function rejectUser(id) {
-  if (!confirm('Remove this user?')) return;
-  const r = await fetch(`/api/admin/reject/${id}`, {
-    method: 'PATCH',
-    headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }
-  });
-  const data = await r.json().catch(() => ({}));
-  if (r.ok) {
-    statusMsg.textContent = '✅ User removed';
-    await loadUsers();
-  } else {
-    statusMsg.textContent = `❌ Reject failed: ${data.msg || r.status}`;
+  async function rejectUser(id) {
+    if (!confirm('Remove this user?')) return;
+    const r = await fetch(`/api/admin/reject/${id}`, {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }
+    });
+    const data = await r.json().catch(() => ({}));
+    if (r.ok) {
+      statusMsg.textContent = '✅ User removed';
+      await loadUsers();
+    } else {
+      statusMsg.textContent = `❌ Reject failed: ${data.msg || r.status}`;
+    }
+    setTimeout(() => (statusMsg.textContent = ''), 2500);
   }
-  setTimeout(() => (statusMsg.textContent = ''), 2500);
-}
 
-
-  // ---------- BUY REQUESTS ----------
+  /* =========================
+   * BUY REQUESTS
+   * ========================= */
   async function fetchRequests() {
     const r = await fetchJSON('/api/admin/buy-requests');
     const buyTable = document.getElementById('admin-buy-request-body');
@@ -287,7 +281,9 @@ async function rejectUser(id) {
     setTimeout(() => statusMsg.textContent = '', 3000);
   }
 
-  // ---------- SELL REQUESTS ----------
+  /* =========================
+   * SELL REQUESTS
+   * ========================= */
   async function fetchSellRequests() {
     const r = await fetchJSON('/api/admin/sell-requests');
     const body = document.getElementById('admin-sell-body');
@@ -334,17 +330,16 @@ async function rejectUser(id) {
     setTimeout(() => statusMsg.textContent = '', 3000);
   }
 
+  // --- logout must be on window for inline onclick ---
   function logout() {
     localStorage.removeItem('token');
     window.location.href = '/login.html';
   }
-
   window.logout = logout;
 
-
-  // --- Sanity: confirm we’re authenticated and admin (use /api/user/me)
+  // --- sanity check current user (optional) ---
   (async function sanity() {
-    const me = await fetchJSON('/api/user/me'); // ✅ correct profile endpoint
+    const me = await fetchJSON('/api/user/me');
     if (!me.ok) {
       statusMsg.textContent = '❌ Auth check failed. Please log in again.';
       return;
@@ -355,149 +350,109 @@ async function rejectUser(id) {
     }
   })();
 
+  /* =========================
+   * ACCOUNTS OVERVIEW (TPV + AI)
+   * ========================= */
+  const ID_MAP = {
+    btc:'bitcoin', eth:'ethereum', usdt:'tether', usdc:'usd-coin',
+    bnb:'binancecoin', xrp:'ripple', ada:'cardano', sol:'solana',
+    doge:'dogecoin', dot:'polkadot', matic:'polygon', shib:'shiba-inu',
+    trx:'tron', ltc:'litecoin', avax:'avalanche-2', link:'chainlink',
+    uni:'uniswap', atom:'cosmos', xlm:'stellar', bch:'bitcoin-cash',
+    icp:'internet-computer', etc:'ethereum-classic', vet:'vechain',
+    fil:'filecoin', apt:'aptos', hbar:'hedera-hashgraph', near:'near'
+  };
 
+  async function loadAccountsOverview() {
+    const r = await fetchJSON('/api/admin/users/overview');
+    const tbody = document.getElementById('admin-accounts-body');
+    if (!tbody) return;
 
-// --- helper: map wallet symbols to CoinGecko IDs (extend as needed)
-const ID_MAP = {
-  btc:'bitcoin', eth:'ethereum', usdt:'tether', usdc:'usd-coin',
-  bnb:'binancecoin', xrp:'ripple', ada:'cardano', sol:'solana',
-  doge:'dogecoin', dot:'polkadot', matic:'polygon', shib:'shiba-inu',
-  trx:'tron', ltc:'litecoin', avax:'avalanche-2', link:'chainlink',
-  uni:'uniswap', atom:'cosmos', xlm:'stellar', bch:'bitcoin-cash',
-  icp:'internet-computer', etc:'ethereum-classic', vet:'vechain',
-  fil:'filecoin', apt:'aptos', hbar:'hedera-hashgraph', near:'near'
-};
+    tbody.innerHTML = '';
 
-// Pull overview and render immediately; compute TPV afterwards
-async function loadAccountsOverview() {
-  const r = await fetchJSON('/api/admin/users/overview');
-  const tbody = document.getElementById('admin-accounts-body');
-  tbody.innerHTML = '';
-
-  if (!r.ok) {
-    tbody.innerHTML = `<tr><td colspan="10" class="p-3 text-center text-red-400">❌ /api/admin/users/overview ${r.status} — ${r.raw || 'Failed'}</td></tr>`;
-    return;
-  }
-
-  const rows = Array.isArray(r.data) ? r.data : [];
-  if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="10" class="p-3 text-center text-gray-400">No users</td></tr>`;
-    return;
-  }
-
-
-  
-// --- helper: map wallet symbols to CoinGecko IDs (extend as needed)
-const ID_MAP = {
-  btc:'bitcoin', eth:'ethereum', usdt:'tether', usdc:'usd-coin',
-  bnb:'binancecoin', xrp:'ripple', ada:'cardano', sol:'solana',
-  doge:'dogecoin', dot:'polkadot', matic:'polygon', shib:'shiba-inu',
-  trx:'tron', ltc:'litecoin', avax:'avalanche-2', link:'chainlink',
-  uni:'uniswap', atom:'cosmos', xlm:'stellar', bch:'bitcoin-cash',
-  icp:'internet-computer', etc:'ethereum-classic', vet:'vechain',
-  fil:'filecoin', apt:'aptos', hbar:'hedera-hashgraph', near:'near'
-};
-
-// Pull overview and render immediately; compute TPV afterwards
-async function loadAccountsOverview() {
-  const r = await fetchJSON('/api/admin/users/overview');
-  const tbody = document.getElementById('admin-accounts-body');
-  if (!tbody) return;
-
-  tbody.innerHTML = '';
-
-  if (!r.ok) {
-    tbody.innerHTML = `<tr><td colspan="10" class="p-3 text-center text-red-400">
-      ❌ /api/admin/users/overview ${r.status} — ${r.raw || 'Failed'}
-    </td></tr>`;
-    return;
-  }
-
-  const rows = Array.isArray(r.data) ? r.data : [];
-  if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="10" class="p-3 text-center text-gray-400">No users</td></tr>`;
-    return;
-  }
-
-  // Build table first (TPV will be filled later)
-  tbody.innerHTML = rows.map(u => {
-    const w = u.wallet || {};
-    const walletShort = Object.keys(w).length
-      ? Object.entries(w).map(([k,v]) => `${k.toUpperCase()}:${(+v).toFixed(6)}`).join(', ')
-      : '—';
-    const location = [u.lastLoginCity, u.lastLoginCountry].filter(Boolean).join(', ') || '—';
-
-    return `
-      <tr class="border-b border-gray-700" data-user-id="${u._id}">
-        <td class="p-2 border">${u.name || '-'}</td>
-        <td class="p-2 border">${u.email}</td>
-        <td class="p-2 border">${u.agent || '-'}</td>
-        <td class="p-2 border">${u.isApproved ? '✅' : '❌'}</td>
-        <td class="p-2 border">${u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : '-'}</td>
-        <td class="p-2 border">${location}</td>
-        <td class="p-2 border">${walletShort}</td>
-        <td class="p-2 border tpv-cell">…</td>
-        <td class="p-2 border">${u.aiSim?.simulatedValue != null ? '$' + (+u.aiSim.simulatedValue).toFixed(2) : '—'}</td>
-        <td class="p-2 border">${u.aiSim?.lastUpdated ? new Date(u.aiSim.lastUpdated).toLocaleString() : '—'}</td>
-      </tr>
-    `;
-  }).join('');
-
-  // Compute TPV for everyone in one shot (union of coin IDs)
-  await fillTPV(rows);
-}
-
-// Fetch prices once and fill TPV cells
-async function fillTPV(users) {
-  // gather all symbols used across users
-  const symbols = new Set();
-  users.forEach(u => {
-    const w = u.wallet || {};
-    Object.keys(w).forEach(s => symbols.add(s.toLowerCase()));
-  });
-  if (!symbols.size) return;
-
-  // map to CoinGecko ids and dedupe
-  const ids = Array.from(symbols).map(s => ID_MAP[s] || s).filter(Boolean);
-  const uniqueIds = Array.from(new Set(ids));
-  if (!uniqueIds.length) return;
-
-  // pull current prices
-  const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(uniqueIds.join(','))}&vs_currencies=usd`;
-  let prices = {};
-  try {
-    const res = await fetch(url);
-    prices = await res.json();
-  } catch (e) {
-    console.warn('TPV price fetch failed', e);
-    return;
-  }
-
-  // compute TPV per user and inject to table
-  users.forEach(u => {
-    const w = u.wallet || {};
-    let tpv = 0;
-    for (const [sym, amt] of Object.entries(w)) {
-      const id = ID_MAP[sym.toLowerCase()] || sym.toLowerCase();
-      const p = prices[id]?.usd || 0;
-      tpv += (+amt) * (+p);
+    if (!r.ok) {
+      tbody.innerHTML = `<tr><td colspan="10" class="p-3 text-center text-red-400">
+        ❌ /api/admin/users/overview ${r.status} — ${r.raw || 'Failed'}
+      </td></tr>`;
+      return;
     }
-    const tpvCell = document.querySelector(`tr[data-user-id="${u._id}"] .tpv-cell`);
-    if (tpvCell) tpvCell.textContent = `$${tpv.toFixed(2)}`;
+
+    const rows = Array.isArray(r.data) ? r.data : [];
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="10" class="p-3 text-center text-gray-400">No users</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(u => {
+      const w = u.wallet || {};
+      const walletShort = Object.keys(w).length
+        ? Object.entries(w).map(([k,v]) => `${k.toUpperCase()}:${(+v).toFixed(6)}`).join(', ')
+        : '—';
+      const location = [u.lastLoginCity, u.lastLoginCountry].filter(Boolean).join(', ') || '—';
+
+      return `
+        <tr class="border-b border-gray-700" data-user-id="${u._id}">
+          <td class="p-2 border">${u.name || '-'}</td>
+          <td class="p-2 border">${u.email}</td>
+          <td class="p-2 border">${u.agent || '-'}</td>
+          <td class="p-2 border">${u.isApproved ? '✅' : '❌'}</td>
+          <td class="p-2 border">${u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : '-'}</td>
+          <td class="p-2 border">${location}</td>
+          <td class="p-2 border">${walletShort}</td>
+          <td class="p-2 border tpv-cell">…</td>
+          <td class="p-2 border">${u.aiSim?.simulatedValue != null ? '$' + (+u.aiSim.simulatedValue).toFixed(2) : '—'}</td>
+          <td class="p-2 border">${u.aiSim?.lastUpdated ? new Date(u.aiSim.lastUpdated).toLocaleString() : '—'}</td>
+        </tr>
+      `;
+    }).join('');
+
+    await fillTPV(rows);
+  }
+
+  async function fillTPV(users) {
+    const symbols = new Set();
+    users.forEach(u => {
+      const w = u.wallet || {};
+      Object.keys(w).forEach(s => symbols.add(s.toLowerCase()));
+    });
+    if (!symbols.size) return;
+
+    const ids = Array.from(symbols).map(s => ID_MAP[s] || s).filter(Boolean);
+    const uniqueIds = Array.from(new Set(ids));
+    if (!uniqueIds.length) return;
+
+    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(uniqueIds.join(','))}&vs_currencies=usd`;
+    let prices = {};
+    try {
+      const res = await fetch(url);
+      prices = await res.json();
+    } catch (e) {
+      console.warn('TPV price fetch failed', e);
+      return;
+    }
+
+    users.forEach(u => {
+      const w = u.wallet || {};
+      let tpv = 0;
+      for (const [sym, amt] of Object.entries(w)) {
+        const id = ID_MAP[sym.toLowerCase()] || sym.toLowerCase();
+        const p = prices[id]?.usd || 0;
+        tpv += (+amt) * (+p);
+      }
+      const tpvCell = document.querySelector(`tr[data-user-id="${u._id}"] .tpv-cell`);
+      if (tpvCell) tpvCell.textContent = `$${tpv.toFixed(2)}`;
+    });
+  }
+
+  // --- kickoff once DOM is ready (ensures tbody elements exist) ---
+  document.addEventListener('DOMContentLoaded', () => {
+    loadUsers();
+    fetchRequests();
+    fetchSellRequests();
+    loadAccountsOverview();
   });
-}
-
-
-
-  
-  // Kick off all loads
-  loadUsers();
-  fetchRequests();
-  fetchSellRequests();
-  loadAccountsOverview(); // ✅ add this with your other kick-offs
-
-
 </script>
+
 
 
 
