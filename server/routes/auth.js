@@ -7,28 +7,31 @@ const User = require('../models/User');
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'devsecret';
 
-// --- helper: IP -> geo (best-effort, no API key) ---
+// helper
 async function geoFromIp(ip) {
   try {
-    // skip private/loopback/empty IPs
-    if (
-      !ip ||
-      /^10\./.test(ip) ||
-      /^192\.168\./.test(ip) ||
-      /^172\.(1[6-9]|2\d|3[0-1])\./.test(ip) ||
-      /^127\./.test(ip) ||
-      ip === '::1'
-    ) {
+    if (!ip || /^10\.|^192\.168\.|^172\.(1[6-9]|2\d|3[0-1])\.|^127\.|^::1/.test(ip)) {
       return { city: '', country: '' };
     }
-    const res = await fetch(`https://ipapi.co/${ip}/json/`);
-    if (!res.ok) return { city: '', country: '' };
-    const j = await res.json();
+    const resp = await fetch(`https://ipapi.co/${ip}/json/`, { timeout: 3000 });
+    if (!resp.ok) return { city: '', country: '' };
+    const j = await resp.json();
     return { city: j.city || '', country: j.country_name || j.country || '' };
   } catch {
     return { city: '', country: '' };
   }
 }
+
+// record last login + geo
+const xfwd = (req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+user.lastLoginAt = new Date();
+user.lastLoginIp = xfwd || req.ip || '';
+
+const { city, country } = await geoFromIp(user.lastLoginIp);
+user.lastLoginCity = city;
+user.lastLoginCountry = country;
+
+
 
 // POST /api/auth/signup
 router.post('/signup', async (req, res) => {
