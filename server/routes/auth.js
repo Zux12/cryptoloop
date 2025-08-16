@@ -38,25 +38,37 @@ function getClientIp(req) {
 // ---- helper: IP -> geo (best-effort, no key) ----
 async function geoFromIp(ip) {
   try {
-    // skip private/loopback/empty IPs
-    if (
-      !ip ||
-      /^10\./.test(ip) ||
-      /^192\.168\./.test(ip) ||
-      /^172\.(1[6-9]|2\d|3[0-1])\./.test(ip) ||
-      /^127\./.test(ip) ||
-      ip === '::1'
-    ) {
-      return { city: '', country: '' };
+    if (!ip) return { city: '', country: '' };
+
+    // Primary: ipapi
+    let city = '', country = '';
+    try {
+      const r1 = await fetch(`https://ipapi.co/${ip}/json/`);
+      if (r1.ok) {
+        const j1 = await r1.json();
+        city = j1.city || '';
+        country = j1.country_name || j1.country || '';
+      }
+    } catch {}
+
+    // Secondary: ipinfo (no token = very limited but ok as a fallback)
+    if (!city || !country) {
+      try {
+        const r2 = await fetch(`https://ipinfo.io/${ip}/json`);
+        if (r2.ok) {
+          const j2 = await r2.json();
+          city = city || j2.city || '';
+          country = country || j2.country || '';
+        }
+      } catch {}
     }
-    const resp = await fetch(`https://ipapi.co/${ip}/json/`);
-    if (!resp.ok) return { city: '', country: '' };
-    const j = await resp.json();
-    return { city: j.city || '', country: j.country_name || j.country || '' };
+
+    return { city, country };
   } catch {
     return { city: '', country: '' };
   }
 }
+
 
 // POST /api/auth/signup
 router.post('/signup', async (req, res) => {
