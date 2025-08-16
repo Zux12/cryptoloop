@@ -200,7 +200,12 @@ router.post('/sell-update', async (req, res) => {
  * ========================= */
 router.get('/users/overview', async (req, res) => {
   try {
-    const users = await User.find({}, 'name email agent isApproved createdAt lastLoginAt lastLoginIp wallet').lean();
+
+    const users = await User.find(
+  {},
+  'name email agent isApproved createdAt lastLoginAt lastLoginIp lastLoginCity lastLoginCountry wallet'
+).lean();
+
     const ids = users.map(u => u._id);
     const sims = await CryptoAISim.find({ userId: { $in: ids } }, 'userId simulatedValue lastUpdated').lean();
     const simMap = new Map(sims.map(s => [String(s.userId), s]));
