@@ -79,6 +79,7 @@
     const rememberCb = document.getElementById('remember');
     const toggleBtn = document.getElementById('toggle-pass');
 
+    // --- Helpers ---
     function showError(msg) {
       errorBox.textContent = msg || 'Something went wrong.';
       errorBox.classList.remove('hidden');
@@ -114,18 +115,37 @@
       rememberCb.checked = true;
     }
 
-    // Fail counter -> cooldown
+    // Fail counter -> live countdown cooldown
     let failCount = 0;
     let cooldownUntil = 0;
+    let cooldownTimer = null;
+
+    function startCooldown(seconds) {
+      cooldownUntil = Date.now() + seconds * 1000;
+
+      function updateMessage() {
+        const left = Math.ceil((cooldownUntil - Date.now()) / 1000);
+        if (left > 0) {
+          showError(`Too many attempts. Try again in ${left}s.`);
+        } else {
+          clearInterval(cooldownTimer);
+          cooldownTimer = null;
+          cooldownUntil = 0;
+          clearError();
+        }
+      }
+
+      updateMessage(); // immediate
+      cooldownTimer = setInterval(updateMessage, 1000);
+    }
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       clearError();
 
-      const now = Date.now();
-      if (cooldownUntil && now < cooldownUntil) {
-        const left = Math.ceil((cooldownUntil - now) / 1000);
-        return showError(`Too many attempts. Try again in ${left}s.`);
+      // Cooldown gate
+      if (cooldownUntil && Date.now() < cooldownUntil) {
+        return; // already blocked, message will be updating live
       }
 
       const email = emailEl.value.trim().toLowerCase();
@@ -155,7 +175,7 @@
       if (!res.ok) {
         failCount++;
         if (failCount >= 3) {
-          cooldownUntil = Date.now() + 15000; // 15s lock
+          startCooldown(15); // 15-second lock
           failCount = 0;
         }
         btn.disabled = false; btn.textContent = originalText;
