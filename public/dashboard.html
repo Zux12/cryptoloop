@@ -3,273 +3,415 @@
 <head>
   <meta charset="UTF-8">
   <title>CryptoLoop Dashboard</title>
-  <link rel="stylesheet" href="style.css"> <!-- ✅ Add this line -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Charts (kept to avoid touching other files) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/luxon"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+
+  <!-- Local stylesheet kept if you already use it; safe to keep or remove -->
+  <link rel="stylesheet" href="style.css">
+
   <style>
+    /* Minimal local polish to avoid editing other files */
     .tab { display: none; }
     .tab.active { display: block; }
+    .nav-tab-style, .ai-tab-style {
+      /* Using Tailwind via @apply would require a build; keep plain classes instead */
+    }
+    .glass {
+      background: rgba(17, 24, 39, 0.6);
+      backdrop-filter: saturate(180%) blur(8px);
+    }
+    /* Hide scrollbars on skeleton wiggles (purely cosmetic) */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen px-4">
+<body class="bg-gray-900 text-white min-h-screen">
 
-  <!-- Header with logo and user -->
-  <div class="mb-6">
-    <div class="flex justify-between items-center">
+  <!-- Sticky Header -->
+  <header class="sticky top-0 z-40 glass border-b border-gray-800">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <img src="images/logo.png" alt="CryptoLoop Logo" class="h-10 w-auto" />
+        <img src="images/logo.png" alt="CryptoLoop Logo" class="h-9 w-auto" />
+        <span class="font-semibold text-lg">CryptoLoop</span>
       </div>
       <div id="welcome-user" class="text-sm text-green-400"></div>
     </div>
+  </header>
 
-    <!-- Centered title -->
-    <h1 class="text-3xl font-bold text-center mt-4">CryptoLoop Dashboard</h1>
-  </div>
+  <main class="max-w-6xl mx-auto px-4">
+    <!-- Title -->
+    <h1 class="text-3xl sm:text-4xl font-extrabold text-center mt-6 tracking-tight">CryptoLoop Dashboard</h1>
 
- <!-- Navigation Tabs -->
-<nav class="flex justify-center gap-2 mb-6">
-  <button data-tab="market" class="nav-tab-btn nav-tab-style active">📈 Market</button>
-  <button data-tab="buy" class="nav-tab-btn nav-tab-style">💰 Buy</button>
-  <button data-tab="sell" class="nav-tab-btn nav-tab-style">📤 Sell</button>
-  <button data-tab="wallet" class="nav-tab-btn nav-tab-style">👛 Wallet</button>
-  <button data-tab="chart" class="nav-tab-btn nav-tab-style">📊 Chart</button>
-  <button data-tab="ai-sim" class="nav-tab-btn ai-tab-style">CryptoAI</button>
+    <!-- Tabs + Logout -->
+    <nav class="flex flex-wrap justify-center gap-2 mt-5 mb-6" role="tablist" aria-label="Dashboard tabs">
+      <button data-tab="market" class="nav-tab-btn px-3 sm:px-4 py-2 rounded-xl bg-gray-800 text-white border border-gray-700 hover:bg-gray-700 transition active"
+              role="tab" aria-selected="true" aria-controls="market" id="tab-market">📈 Market</button>
+      <button data-tab="buy" class="nav-tab-btn px-3 sm:px-4 py-2 rounded-xl bg-gray-800 text-white border border-gray-700 hover:bg-gray-700 transition"
+              role="tab" aria-selected="false" aria-controls="buy" id="tab-buy">💰 Buy</button>
+      <button data-tab="sell" class="nav-tab-btn px-3 sm:px-4 py-2 rounded-xl bg-gray-800 text-white border border-gray-700 hover:bg-gray-700 transition"
+              role="tab" aria-selected="false" aria-controls="sell" id="tab-sell">📤 Sell</button>
+      <button data-tab="wallet" class="nav-tab-btn px-3 sm:px-4 py-2 rounded-xl bg-gray-800 text-white border border-gray-700 hover:bg-gray-700 transition"
+              role="tab" aria-selected="false" aria-controls="wallet" id="tab-wallet">👛 Wallet</button>
+      <button data-tab="chart" class="nav-tab-btn px-3 sm:px-4 py-2 rounded-xl bg-gray-800 text-white border border-gray-700 hover:bg-gray-700 transition"
+              role="tab" aria-selected="false" aria-controls="chart" id="tab-chart">📊 Chart</button>
+      <button data-tab="ai-sim" class="nav-tab-btn px-3 sm:px-4 py-2 rounded-xl bg-gray-800 text-white border border-gray-700 hover:bg-gray-700 transition"
+              role="tab" aria-selected="false" aria-controls="ai-sim" id="tab-aisim">🤖 CryptoAI</button>
 
-  <button id="logout" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-xl transition duration-300">
-    🔐 Logout
-  </button>
-</nav>
-
-
-  <!-- Centered Total Portfolio Value -->
-  <div id="total-value" class="text-center text-3xl text-green-400 font-bold my-6">
-    Total Portfolio Value: $0.00
-  </div>
-  <div id="cryptoai-value" class="text-center text-xl text-cyan-400 font-semibold mb-4">
-    CryptoAI Simulated Value: Loading...
-  </div>
-  
-
-  <!-- 📈 Market Overview -->
-  <div id="market" class="tab active px-6 py-6">
-    <h2 class="text-2xl font-semibold mb-4">Market Overview</h2>
-
-
-      
-
-    <!-- Add coin input -->
-    <div class="flex items-center mb-4 gap-3">
-      <input
-        id="new-coin-input"
-        type="text"
-        placeholder="Add coin by symbol (e.g. BTC, ETH)"
-        class="p-2 rounded-md bg-gray-800 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-400 w-full"
-      />
-      <button
-        id="add-coin"
-        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-semibold transition"
-      >
-        Add Coin
+      <button id="logout" class="ml-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-xl transition">
+        🔐 Logout
       </button>
-    </div>
+    </nav>
 
-    <!-- Market Table -->
-    <div class="overflow-x-auto rounded-lg border border-gray-700">
-      <table id="market-table" class="min-w-full text-sm text-left bg-gray-700 text-white">
-        <thead class="bg-gray-800 text-white">
-          <tr>
-            <th class="p-2 border">Name</th>
-            <th class="p-2 border">Symbol</th>
-            <th class="p-2 border">Price (USD)</th>
-            <th class="p-2 border">24h Change (%)</th>
-            <th class="p-2 border">Trend</th>
-            <th class="p-2 border">Holdings</th>
-          </tr>
-        </thead>
-        <tbody class="bg-gray-700 text-white text-sm"></tbody>
-      </table>
-    </div>
-
-    <!-- 📰 Tailwind-Styled Crypto News -->
-<h3 class="text-xl font-semibold mt-10 mb-4 text-white">📰 Crypto News</h3>
-<ul id="crypto-news" class="space-y-3">
-  <li class="text-gray-400 italic">Loading news...</li>
-</ul>
-
-  </div>
-
-  <!-- 💰 Buy Tab -->
-  <div id="buy" class="tab px-6 py-6">
-    <h2 class="text-xl font-semibold mb-4">💰 Buy Crypto</h2>
-    <form id="buy-form" class="space-y-3">
-      <input type="text" id="buy-symbol" placeholder="Symbol (e.g. BTC)" class="w-full p-2 rounded bg-gray-800 border border-gray-600">
-      <input type="number" id="buy-amount" placeholder="Amount in USD" class="w-full p-2 rounded bg-gray-800 border border-gray-600">
-      <button id="buy-submit" type="submit" disabled class="bg-green-600 opacity-50 px-4 py-2 rounded font-semibold">
-        Submit
-      </button>
-      
-    </form>
-    <div id="buy-result" class="mt-3 text-sm"></div>
-  
-
-
-    <h3 class="text-lg font-semibold mt-8 mb-2">Buy History</h3>
-    <table class="min-w-full text-sm bg-gray-700 text-white border border-gray-600 mt-2">
-      <thead class="bg-gray-800">
-        <tr>
-          <th class="p-2 border">Symbol</th>
-          <th class="p-2 border">USD</th>
-          <th class="p-2 border">Crypto Amount</th>
-          <th class="p-2 border">Status</th>
-          <th class="p-2 border">Actions</th>
-        </tr>
-      </thead>
-      <tbody id="buy-history-body" class="text-sm"></tbody>
-    </table>
-  </div>
-
-  <!-- 📤 Sell Tab -->
-  <div id="sell" class="tab px-6 py-6">
-    <h2 class="text-xl font-semibold mb-4">📤 Sell Crypto</h2>
-
-<!--additional sell tab new section-->
-<table class="min-w-full text-sm bg-gray-700 text-white border border-gray-600 mt-4">
-    <thead class="bg-gray-800">
-      <tr>
-        <th class="p-2 border">Symbol</th>
-        <th class="p-2 border">Owned</th>
-        <th class="p-2 border">USD Spent</th>
-        <th class="p-2 border">Timestamp</th>
-        <th class="p-2 border">Action</th>
-        <th class="p-2 border">Status</th>
-      </tr>
-    </thead>
-    <tbody id="sell-table-body"></tbody>
-  </table>
-
-<!-- 📜 Past Sell History -->
-<h2 class="text-xl font-semibold mt-10 mb-3">📜 Past Sell History</h2>
-<div class="overflow-x-auto border border-gray-700 rounded mb-10">
-  <table class="min-w-full text-sm bg-gray-800">
-    <thead class="bg-gray-700 text-white">
-      <tr>
-        <th class="p-2 border">Symbol</th>
-        <th class="p-2 border">Amount</th>
-        <th class="p-2 border">Status</th>
-        <th class="p-2 border">Timestamp</th>
-        <th class="p-2 border">Transaction ID</th>
-      </tr>
-    </thead>
-    <tbody id="sell-history-body" class="text-white"></tbody>
-  </table>
-</div>
-
-
-
-
-    <form id="sell-form" class="space-y-3">
-<!--
-          <input type="text" id="sell-symbol" placeholder="Symbol (e.g. BTC)" class="w-full p-2 rounded bg-gray-800 border border-gray-600">
-      <input type="number" id="sell-amount" placeholder="Amount in USD" class="w-full p-2 rounded bg-gray-800 border border-gray-600">
-      <button type="submit" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-semibold">Submit</button>
--->
-    
-    </form>
-    <div id="sell-result" class="mt-3 text-sm"></div>
-  </div>
-
-
-
-
-
-
-  
-
-
-
-
-  <!-- 👛 Wallet Tab -->
-  <div id="wallet" class="tab px-6 py-6">
-    <h2 class="text-2xl font-semibold mb-4">👛 My Wallet</h2>
-    <div class="overflow-x-auto rounded-lg border border-gray-700">
-      <table id="wallet-table" class="min-w-full text-sm text-left bg-gray-700 text-white">
-        <thead class="bg-gray-800 text-white">
-          <tr>
-            <th class="p-2 border">Coin</th>
-            <th class="p-2 border">Symbol</th>
-            <th class="p-2 border">Owned</th>
-            <th class="p-2 border">Price (USD)</th>
-            <th class="p-2 border">Value</th>
-            <th class="p-2 border">% Portfolio</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-
-<!-- 📊 Chart Tab -->
-<div id="chart" class="tab px-6 py-6">
-  <h2 class="text-2xl font-semibold mb-4">📊 Live Chart</h2>
-  <div id="selected-coin-name" class="text-xl text-white mb-2"></div>
-
-  <!-- Controls Section -->
-  <div class="mb-4 flex flex-wrap items-center gap-2">
-    <!-- Range Button Group -->
-    <div id="chart-range-buttons" class="inline-flex bg-gray-800 rounded overflow-hidden border border-gray-700">
-      <button onclick="setChartRange('1', this)" class="chart-range-btn px-4 py-2 text-sm text-white hover:bg-gray-700">24h</button>
-      <button onclick="setChartRange('7', this)" class="chart-range-btn px-4 py-2 text-sm text-white hover:bg-gray-700">7d</button>
-      <button onclick="setChartRange('30', this)" class="chart-range-btn px-4 py-2 text-sm text-white hover:bg-gray-700">30d</button>
-    </div>
-
-  <!-- 🔄 New chart type toggle -->
-  <button onclick="toggleChartType()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded">
-    🔁 Switch to Candlestick
-  </button>
-    <button onclick="toggleVolume()" class="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm">
-  📉 Hide Volume
-</button>
-
-
-  <!-- Reset Zoom -->
-  <button onclick="resetZoom()" class="bg-transparent border border-gray-500 text-white text-sm px-4 py-2 rounded hover:bg-gray-700">
-    🔄 Reset Zoom
-  </button>
-</div>
-
-  <!-- Chart Canvas -->
-  <canvas id="cryptoChart" height="200"></canvas>
-</div>
-
-
-      <!--CryptoAi-->
-      <div id="ai-sim" class="tab">
-        <h2 class="text-2xl font-bold text-center mb-4">SmartSim AI Trading</h2>
-        <div class="overflow-x-auto bg-gray-800 rounded-xl p-4 shadow-md">
-          <table class="min-w-full text-sm text-left">
-            <thead>
-              <tr class="text-gray-300 border-b border-gray-600">
-                <th class="px-4 py-2">Time</th>
-                <th class="px-4 py-2">Action</th>
-                <th class="px-4 py-2">Sentiment</th>
-                <th class="px-4 py-2">% Change</th>
-                <th class="px-4 py-2">New Value (USD)</th>
-              </tr>
-            </thead>
-            <tbody id="ai-sim-table" class="text-white">
-              <!-- Simulation rows will go here -->
-            </tbody>
-          </table>
+    <!-- Portfolio Hero -->
+    <section class="text-center my-6">
+      <div class="inline-flex items-center gap-3 px-5 py-4 rounded-2xl bg-gray-800/60 border border-gray-700">
+        <span class="text-2xl" aria-hidden="true">💼</span>
+        <div class="text-left">
+          <div class="text-xs sm:text-sm text-gray-300">Total Portfolio Value</div>
+          <div id="total-value" class="font-extrabold tracking-tight text-4xl sm:text-5xl text-green-400">$0.00</div>
         </div>
       </div>
+      <div id="cryptoai-value" class="mt-3 text-cyan-400/90 text-base sm:text-lg">CryptoAI Simulated Value: Loading...</div>
+    </section>
 
+    <!-- ===== MARKET ===== -->
+    <div id="market" class="tab active px-2 sm:px-6 py-6" role="tabpanel" aria-labelledby="tab-market">
+      <h2 class="text-2xl font-semibold mb-4">Market Overview</h2>
 
+      <!-- Add coin input -->
+      <div class="flex items-center mb-4 gap-3">
+        <input
+          id="new-coin-input"
+          type="text"
+          placeholder="Add coin by symbol (e.g. BTC, ETH)"
+          class="p-2 rounded-md bg-gray-800 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-400 w-full"
+        />
+        <button
+          id="add-coin"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-semibold transition"
+        >
+          Add Coin
+        </button>
+      </div>
 
-  <!-- Main JS -->
+      <!-- Skeleton while loading -->
+      <div id="market-skeleton" class="grid gap-2 my-3">
+        <div class="h-10 bg-gray-800 animate-pulse rounded"></div>
+        <div class="h-10 bg-gray-800 animate-pulse rounded"></div>
+        <div class="h-10 bg-gray-800 animate-pulse rounded"></div>
+      </div>
+
+      <!-- Market Table -->
+      <div id="market-table-wrap" class="overflow-x-auto rounded-lg border border-gray-700 hidden">
+        <table id="market-table" class="min-w-full text-sm text-left bg-gray-700 text-white">
+          <thead class="bg-gray-800 text-white">
+            <tr>
+              <th class="p-2 border">Name</th>
+              <th class="p-2 border">Symbol</th>
+              <th class="p-2 border">Price (USD)</th>
+              <th class="p-2 border">24h Change (%)</th>
+              <th class="p-2 border">Trend</th>
+              <th class="p-2 border">Holdings</th>
+            </tr>
+          </thead>
+          <tbody class="bg-gray-700 text-white text-sm"></tbody>
+        </table>
+      </div>
+
+      <!-- News -->
+      <h3 class="text-xl font-semibold mt-10 mb-4 text-white">📰 Crypto News</h3>
+      <ul id="crypto-news" class="space-y-3">
+        <li class="text-gray-400 italic">Loading news...</li>
+      </ul>
+    </div>
+
+    <!-- ===== BUY ===== -->
+    <div id="buy" class="tab px-2 sm:px-6 py-6" role="tabpanel" aria-labelledby="tab-buy">
+      <h2 class="text-xl font-semibold mb-4">💰 Buy Crypto</h2>
+      <form id="buy-form" class="space-y-3">
+        <input type="text" id="buy-symbol" placeholder="Symbol (e.g. BTC)" class="w-full p-2 rounded bg-gray-800 border border-gray-600">
+        <input type="number" id="buy-amount" placeholder="Amount in USD" class="w-full p-2 rounded bg-gray-800 border border-gray-600">
+        <button id="buy-submit" type="submit" disabled class="bg-green-600 opacity-50 px-4 py-2 rounded font-semibold transition">
+          Submit
+        </button>
+        <p class="text-xs text-gray-400">Enter a symbol and a positive USD amount.</p>
+      </form>
+      <div id="buy-result" class="mt-3 text-sm"></div>
+
+      <h3 class="text-lg font-semibold mt-8 mb-2">Buy History</h3>
+      <div class="overflow-x-auto border border-gray-700 rounded">
+        <table class="min-w-full text-sm bg-gray-700 text-white">
+          <thead class="bg-gray-800">
+            <tr>
+              <th class="p-2 border">Symbol</th>
+              <th class="p-2 border">USD</th>
+              <th class="p-2 border">Crypto Amount</th>
+              <th class="p-2 border">Status</th>
+              <th class="p-2 border">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="buy-history-body" class="text-sm"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== SELL ===== -->
+    <div id="sell" class="tab px-2 sm:px-6 py-6" role="tabpanel" aria-labelledby="tab-sell">
+      <h2 class="text-xl font-semibold mb-4">📤 Sell Crypto</h2>
+
+      <div class="overflow-x-auto border border-gray-700 rounded">
+        <table class="min-w-full text-sm bg-gray-700 text-white">
+          <thead class="bg-gray-800">
+            <tr>
+              <th class="p-2 border">Symbol</th>
+              <th class="p-2 border">Owned</th>
+              <th class="p-2 border">USD Spent</th>
+              <th class="p-2 border">Timestamp</th>
+              <th class="p-2 border">Action</th>
+              <th class="p-2 border">Status</th>
+            </tr>
+          </thead>
+          <tbody id="sell-table-body"></tbody>
+        </table>
+      </div>
+
+      <!-- Past Sell History -->
+      <h2 class="text-xl font-semibold mt-10 mb-3">📜 Past Sell History</h2>
+      <div class="overflow-x-auto border border-gray-700 rounded mb-10">
+        <table class="min-w-full text-sm bg-gray-800">
+          <thead class="bg-gray-700 text-white">
+            <tr>
+              <th class="p-2 border">Symbol</th>
+              <th class="p-2 border">Amount</th>
+              <th class="p-2 border">Status</th>
+              <th class="p-2 border">Timestamp</th>
+              <th class="p-2 border">Transaction ID</th>
+            </tr>
+          </thead>
+          <tbody id="sell-history-body" class="text-white"></tbody>
+        </table>
+      </div>
+
+      <form id="sell-form" class="space-y-3"><!-- intentionally left for future fields --></form>
+      <div id="sell-result" class="mt-3 text-sm"></div>
+    </div>
+
+    <!-- ===== WALLET ===== -->
+    <div id="wallet" class="tab px-2 sm:px-6 py-6" role="tabpanel" aria-labelledby="tab-wallet">
+      <h2 class="text-2xl font-semibold mb-4">👛 My Wallet</h2>
+      <div class="overflow-x-auto rounded-lg border border-gray-700">
+        <table id="wallet-table" class="min-w-full text-sm text-left bg-gray-700 text-white">
+          <thead class="bg-gray-800 text-white">
+            <tr>
+              <th class="p-2 border">Coin</th>
+              <th class="p-2 border">Symbol</th>
+              <th class="p-2 border">Owned</th>
+              <th class="p-2 border">Price (USD)</th>
+              <th class="p-2 border">Value</th>
+              <th class="p-2 border">% Portfolio</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== CHART ===== -->
+    <div id="chart" class="tab px-2 sm:px-6 py-6" role="tabpanel" aria-labelledby="tab-chart">
+      <h2 class="text-2xl font-semibold mb-4">📊 Live Chart</h2>
+      <div id="selected-coin-name" class="text-xl text-white mb-2"></div>
+
+      <!-- Controls -->
+      <div class="mb-4 flex flex-wrap items-center gap-2">
+        <div id="chart-range-buttons" class="inline-flex bg-gray-800 rounded overflow-hidden border border-gray-700">
+          <button onclick="setChartRange('1', this)" class="chart-range-btn px-4 py-2 text-sm text-white hover:bg-gray-700">24h</button>
+          <button onclick="setChartRange('7', this)" class="chart-range-btn px-4 py-2 text-sm text-white hover:bg-gray-700">7d</button>
+          <button onclick="setChartRange('30', this)" class="chart-range-btn px-4 py-2 text-sm text-white hover:bg-gray-700">30d</button>
+        </div>
+
+        <button onclick="toggleChartType()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded">
+          🔁 Switch to Candlestick
+        </button>
+        <button onclick="toggleVolume()" class="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm">
+          📉 Hide Volume
+        </button>
+        <button onclick="resetZoom()" class="bg-transparent border border-gray-500 text-white text-sm px-4 py-2 rounded hover:bg-gray-700">
+          🔄 Reset Zoom
+        </button>
+      </div>
+
+      <canvas id="cryptoChart" height="200"></canvas>
+    </div>
+
+    <!-- ===== AI SIM ===== -->
+    <div id="ai-sim" class="tab px-2 sm:px-6 py-6" role="tabpanel" aria-labelledby="tab-aisim">
+      <h2 class="text-2xl font-bold text-center mb-4">SmartSim AI Trading</h2>
+      <div class="overflow-x-auto bg-gray-800 rounded-xl p-4 shadow-md">
+        <table class="min-w-full text-sm text-left">
+          <thead>
+            <tr class="text-gray-300 border-b border-gray-600">
+              <th class="px-4 py-2">Time</th>
+              <th class="px-4 py-2">Action</th>
+              <th class="px-4 py-2">Sentiment</th>
+              <th class="px-4 py-2">% Change</th>
+              <th class="px-4 py-2">New Value (USD)</th>
+            </tr>
+          </thead>
+          <tbody id="ai-sim-table" class="text-white">
+            <!-- Simulation rows will go here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Toasts -->
+    <div id="toast" class="fixed bottom-4 right-4 px-4 py-3 bg-gray-900/90 border border-gray-700 rounded-lg shadow text-sm hidden"></div>
+
+  </main>
+
+  <!-- Progressive, non-breaking helpers (don’t replace your main.js) -->
+  <script>
+  (function(){
+    // --- Accessibility sync: keep aria-selected aligned with your existing tab switching.
+    const tabs = Array.from(document.querySelectorAll('.nav-tab-btn'));
+    const panels = Array.from(document.querySelectorAll('.tab'));
+
+    function syncARIA() {
+      tabs.forEach(btn => {
+        const selected = btn.classList.contains('active');
+        btn.setAttribute('aria-selected', selected ? 'true' : 'false');
+        btn.tabIndex = selected ? 0 : -1;
+      });
+      panels.forEach(panel => {
+        const isActive = panel.classList.contains('active');
+        panel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+      });
+    }
+
+    // If your main.js toggles .active, we observe and just sync attributes.
+    const observer = new MutationObserver(syncARIA);
+    tabs.forEach(btn => observer.observe(btn, { attributes: true, attributeFilter: ['class'] }));
+    panels.forEach(p => observer.observe(p, { attributes: true, attributeFilter: ['class'] }));
+    syncARIA();
+
+    // Keyboard nav for tabs (won’t break clicks you already have)
+    tabs.forEach(btn => {
+      btn.addEventListener('keydown', (e) => {
+        const i = tabs.indexOf(btn);
+        if (e.key === 'ArrowRight') { e.preventDefault(); tabs[(i+1)%tabs.length].focus(); }
+        if (e.key === 'ArrowLeft')  { e.preventDefault(); tabs[(i-1+tabs.length)%tabs.length].focus(); }
+        if (e.key === 'Home')       { e.preventDefault(); tabs[0].focus(); }
+        if (e.key === 'End')        { e.preventDefault(); tabs[tabs.length-1].focus(); }
+      });
+    });
+
+    // Buy form: enable button when valid (harmless if you already handle it)
+    const sym = document.getElementById('buy-symbol');
+    const usd = document.getElementById('buy-amount');
+    const btn = document.getElementById('buy-submit');
+    function checkBuyValidity(){
+      if (!sym || !usd || !btn) return;
+      const ok = sym.value.trim() && Number(usd.value) > 0;
+      btn.disabled = !ok;
+      btn.classList.toggle('opacity-50', btn.disabled);
+    }
+    if (sym && usd && btn) {
+      sym.addEventListener('input', checkBuyValidity);
+      usd.addEventListener('input', checkBuyValidity);
+      checkBuyValidity();
+    }
+
+    // Market skeleton toggle (call showMarketLoaded() from anywhere once data is in)
+    window.showMarketLoaded = function(){
+      const sk = document.getElementById('market-skeleton');
+      const wrap = document.getElementById('market-table-wrap');
+      if (sk) sk.classList.add('hidden');
+      if (wrap) wrap.classList.remove('hidden');
+    };
+
+    // Helper to color 24h %
+    window.colorPct = function(pct){
+      const v = Number(pct);
+      const cls = v > 0 ? 'text-green-400' : v < 0 ? 'text-red-400' : 'text-gray-300';
+      return `<span class="${cls}">${isFinite(v) ? v.toFixed(2) : '0.00'}%</span>`;
+    };
+
+    // Watchlist removal (front-end only; main.js can refresh after)
+    window.removeFromWatchlist = function(symbol){
+      try {
+        const wl = JSON.parse(localStorage.getItem('watchlist')||'[]');
+        const next = wl.filter(s => s.toLowerCase() !== String(symbol).toLowerCase());
+        localStorage.setItem('watchlist', JSON.stringify(next));
+        window.showToast(`Removed ${symbol.toUpperCase()} from watchlist`, 'success');
+        // If you have a refresh function in main.js, trigger it:
+        // if (window.refreshMarket) window.refreshMarket();
+      } catch(e) {
+        window.showToast('Could not update watchlist', 'error');
+      }
+    };
+
+    // Toasts
+    window.showToast = function(msg, type='info', ms=1800){
+      const el = document.getElementById('toast');
+      if (!el) return;
+      const colors = {info:'text-white', success:'text-green-300', error:'text-red-300'};
+      el.className = `fixed bottom-4 right-4 px-4 py-3 bg-gray-900/90 border border-gray-700 rounded-lg shadow ${colors[type]||colors.info}`;
+      el.textContent = msg;
+      el.style.opacity = '0'; el.style.display = 'block';
+      requestAnimationFrame(()=>{ el.style.transition='opacity 150ms'; el.style.opacity='1'; });
+      setTimeout(()=>{ el.style.opacity='0'; setTimeout(()=>{ el.style.display='none'; },150); }, ms);
+    };
+
+    // Count-up animation for TPV (call this from main.js after you compute TPV)
+    window.animateNumber = function(el, from, to, duration=800) {
+      try {
+        const start = performance.now();
+        const fmt = v => '$' + v.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
+        function frame(t) {
+          const p = Math.min(1, (t - start) / duration);
+          const val = from + (to - from) * p;
+          el.textContent = fmt(val);
+          if (p < 1) requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+      } catch { /* noop */ }
+    };
+
+    // Safe news item rendering (use this if you render news here)
+    window.renderNewsItem = function(ul, {title, url, source, time}){
+      const li = document.createElement('li');
+      li.className = 'bg-gray-800/60 border border-gray-700 rounded p-3';
+      const a = document.createElement('a');
+      a.href = url; a.target = '_blank'; a.rel = 'noopener';
+      a.className = 'text-blue-300 hover:underline';
+      a.textContent = title || 'Open article';
+      const meta = document.createElement('div');
+      meta.className = 'text-xs text-gray-400 mt-1';
+      meta.textContent = `${source || 'Source'} • ${time || ''}`.trim();
+      li.append(a, meta);
+      ul.appendChild(li);
+    };
+
+    // Optional: simple sell prompt helper (non-conflicting)
+    window.promptSell = function(symbol, maxAmountUsd){
+      const val = prompt(`Enter USD amount to sell (max ${maxAmountUsd})`);
+      const num = Number(val);
+      if (!val || isNaN(num) || num <= 0) return alert('Invalid amount.');
+      if (num > maxAmountUsd) return alert('Amount exceeds your holdings value.');
+      // Continue with your existing create-sell-request logic in main.js
+    };
+  })();
+  </script>
+
+  <!-- Keep your existing logic intact -->
   <script src="main.js"></script>
 </body>
 </html>
