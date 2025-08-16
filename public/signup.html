@@ -11,98 +11,167 @@
     <!-- Logo -->
     <div class="text-center mb-6">
       <img src="images/logo.png" alt="CryptoLoop Logo" class="max-w-[160px] mx-auto mb-4" />
-    
-      <p class="text-lg mt-2 font-semibold">Sign Up</p>
+      <p class="text-lg mt-2 font-semibold">Create your account</p>
+      <p class="text-xs text-gray-400 mt-1">Admin approval may be required</p>
     </div>
 
+    <!-- Inline banners -->
+    <div id="success-msg" class="hidden text-sm rounded-md bg-emerald-900/40 border border-emerald-600 px-3 py-2 mb-3">
+      ✅ Account created. Redirecting to login…
+    </div>
+    <div id="error-msg" class="hidden text-sm rounded-md bg-red-900/40 border border-red-600 px-3 py-2 mb-3" aria-live="polite"></div>
+
     <!-- Signup Form -->
-    <form id="signup-form" class="space-y-4">
+    <form id="signup-form" class="space-y-4" novalidate>
       <div>
         <label for="name" class="block text-sm mb-1">Name</label>
-        <input id="name" type="text" required class="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-cyan-400" />
+        <input id="name" type="text" required minlength="2" autocomplete="name"
+               class="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-cyan-400" />
       </div>
 
       <div>
         <label for="email" class="block text-sm mb-1">Email</label>
-        <input id="email" type="email" required class="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-cyan-400" />
+        <input id="email" type="email" required inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false"
+               class="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-cyan-400" />
       </div>
 
       <div>
         <label for="password" class="block text-sm mb-1">Password</label>
-        <input id="password" type="password" required class="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-cyan-400" />
+        <div class="relative">
+          <input id="password" type="password" required minlength="6" autocomplete="new-password"
+                 class="w-full px-4 py-2 pr-12 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-cyan-400" />
+          <button type="button" id="toggle-pass" class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-cyan-300 hover:text-cyan-200">
+            Show
+          </button>
+        </div>
+        <p class="text-[11px] text-gray-400 mt-1">At least 6 characters.</p>
       </div>
 
-<div>
-  <label for="agent" class="block text-sm mb-1">Select Agent</label>
-<select id="agent" required class="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-white">
-  <option value="">-- Select Agent --</option>
-</select>
+      <div>
+        <label for="password2" class="block text-sm mb-1">Confirm Password</label>
+        <div class="relative">
+          <input id="password2" type="password" required minlength="6" autocomplete="new-password"
+                 class="w-full px-4 py-2 pr-12 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-cyan-400" />
+          <button type="button" id="toggle-pass2" class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-cyan-300 hover:text-cyan-200">
+            Show
+          </button>
+        </div>
+      </div>
 
-</div>
-      
-      <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-2 rounded-md font-semibold transition">Create Account</button>
+      <div>
+        <label for="agent" class="block text-sm mb-1">Select Agent</label>
+        <select id="agent" required
+                class="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-white">
+          <option value="">-- Select Agent --</option>
+        </select>
+      </div>
+
+      <button id="submit-btn" type="submit"
+              class="w-full bg-cyan-500 hover:bg-cyan-600 disabled:opacity-60 disabled:cursor-not-allowed text-white py-2 rounded-md font-semibold transition">
+        Create Account
+      </button>
+
+      <p class="text-[11px] text-gray-400 text-center">
+        By signing up, you agree to our <a href="#" class="text-cyan-300 underline">Terms</a> & <a href="#" class="text-cyan-300 underline">Privacy</a>.
+      </p>
     </form>
 
     <!-- Footer Links -->
     <div class="text-center text-sm mt-6">
       <a href="login.html" class="text-cyan-400 hover:underline">Already have an account? Log in</a>
     </div>
-
-    <!-- Error -->
-    <p id="error-msg" class="text-red-500 mt-4 text-center text-sm"></p>
   </div>
 
- <script>
-  // Populate agent options dynamically
-  const agentSelect = document.getElementById('agent');
-  for (let i = 1001; i <= 1020; i++) {
-    const opt = document.createElement('option');
-    opt.value = `AG${i}`;
-    opt.textContent = `AG${i}`;
-    agentSelect.appendChild(opt);
-  }
-
-  const form = document.getElementById('signup-form');
-  const errorMsg = document.getElementById('error-msg');
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const name = document.getElementById('name').value.trim();
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-    const agent = document.getElementById('agent').value;
-
-    if (!agent) {
-      errorMsg.textContent = 'Please select an agent.';
-      return;
+  <script>
+    // Populate agent options dynamically
+    const agentSelect = document.getElementById('agent');
+    for (let i = 1001; i <= 1020; i++) {
+      const opt = document.createElement('option');
+      opt.value = `AG${i}`;
+      opt.textContent = `AG${i}`;
+      agentSelect.appendChild(opt);
     }
 
-    const btn = form.querySelector('button[type="submit"]');
-    btn.disabled = true; btn.textContent = 'Creating...';
-
-    try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, agent })
+    // Password show/hide toggles
+    function bindToggle(inputId, btnId) {
+      const input = document.getElementById(inputId);
+      const btn = document.getElementById(btnId);
+      btn.addEventListener('click', () => {
+        const isPw = input.type === 'password';
+        input.type = isPw ? 'text' : 'password';
+        btn.textContent = isPw ? 'Hide' : 'Show';
+        input.focus();
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        alert('Account created! Awaiting admin approval. Please log in.');
-        window.location.href = 'login.html';
-      } else {
-        errorMsg.textContent = data.msg || 'Signup failed';
-      }
-    } catch (err) {
-      errorMsg.textContent = 'Network error. Please try again.';
-    } finally {
-      btn.disabled = false; btn.textContent = 'Create Account';
     }
-  });
-</script>
+    bindToggle('password', 'toggle-pass');
+    bindToggle('password2', 'toggle-pass2');
 
+    const form = document.getElementById('signup-form');
+    const btn = document.getElementById('submit-btn');
+    const successMsg = document.getElementById('success-msg');
+    const errorBox = document.getElementById('error-msg');
+
+    function showError(msg) {
+      errorBox.textContent = msg || 'Something went wrong.';
+      errorBox.classList.remove('hidden');
+    }
+    function clearError() {
+      errorBox.classList.add('hidden');
+      errorBox.textContent = '';
+    }
+    function showSuccess() {
+      successMsg.classList.remove('hidden');
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearError();
+
+      // Gather + basic sanitize
+      const name = document.getElementById('name').value.trim();
+      const emailRaw = document.getElementById('email').value.trim();
+      const email = emailRaw.toLowerCase();
+      const password = document.getElementById('password').value;
+      const password2 = document.getElementById('password2').value;
+      const agent = document.getElementById('agent').value;
+
+      if (!agent) return showError('Please select an agent.');
+      if (password !== password2) return showError('Passwords do not match.');
+      if (password.length < 6) return showError('Password must be at least 6 characters.');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('Please enter a valid email.');
+
+      // Prevent double submit
+      btn.disabled = true;
+      const originalLabel = btn.textContent;
+      btn.textContent = 'Creating…';
+
+      try {
+        // IMPORTANT: Ensure this path matches your backend route
+        // If your server uses /api/auth/register, change it here.
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, agent })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showSuccess();
+          // Small delay for UX, then go to login
+          setTimeout(() => {
+            window.location.href = 'login.html';
+          }, 900);
+        } else {
+          showError(data.msg || 'Signup failed.');
+        }
+      } catch (err) {
+        showError('Network error. Please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+      }
+    });
+  </script>
 </body>
 </html>
