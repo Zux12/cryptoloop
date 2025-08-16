@@ -1,1 +1,79 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy | CryptoLoop</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#0f172a] text-gray-300 min-h-screen flex flex-col font-sans">
+  <!-- Header -->
+  <header class="bg-[#0f1b2c] px-6 py-4 shadow-md flex justify-between items-center">
+    <h1 class="text-lg font-semibold text-cyan-400">CryptoLoop Privacy Policy</h1>
+    <button onclick="window.close()" 
+            class="bg-red-500 hover:bg-red-600 px-4 py-1 rounded text-white text-sm font-semibold transition">
+      Exit ✖
+    </button>
+  </header>
+
+  <!-- Content -->
+  <main class="flex-1 overflow-y-auto p-6">
+    <div class="prose prose-invert max-w-none text-xs leading-relaxed">
+      <p>
+        At CryptoLoop, your privacy is of the utmost importance. This Privacy Policy describes how we collect, use, and 
+        protect your information. The following provisions are extensive, presented in small text, and somewhat difficult to 
+        read, as is common in general privacy documents. Please review carefully to understand how your data may be processed.
+      </p>
+      <p>
+        1. Data Collection: We collect information you provide during registration such as name, email, and selected agent code. 
+        Additionally, system-generated logs including IP addresses, device information, and browser metadata may be collected 
+        automatically to improve security, troubleshoot errors, and optimize service performance.
+      </p>
+      <p>
+        2. Data Usage: Collected data may be used for account management, service improvement, security monitoring, marketing, 
+        communication, and compliance with applicable laws. CryptoLoop does not sell personal information to third parties; 
+        however, certain data may be shared with trusted partners who enable platform functionality.
+      </p>
+      <p>
+        3. Data Retention: User data is retained for as long as the account remains active or as required to fulfill legal, 
+        tax, audit, or compliance obligations. Upon termination, certain information may persist in backups or archival 
+        systems for disaster recovery or regulatory purposes.
+      </p>
+      <p>
+        4. Cookies and Tracking: CryptoLoop uses cookies, tokens, and related tracking technologies to facilitate login sessions, 
+        enhance security, and analyze platform usage. Users may disable cookies in their browser, but doing so may limit 
+        functionality or accessibility of services.
+      </p>
+      <p>
+        5. Security Measures: We implement technical, administrative, and organizational safeguards to protect data against 
+        unauthorized access, alteration, disclosure, or destruction. Nevertheless, no electronic transmission or storage 
+        system can be guaranteed completely secure.
+      </p>
+      <p>
+        6. Third-Party Links: The platform may contain references or links to external websites or services. CryptoLoop is not 
+        responsible for the privacy practices or content of such external parties. Users are encouraged to review external 
+        privacy policies before engaging with those services.
+      </p>
+      <p>
+        7. Changes to Policy: CryptoLoop reserves the right to modify this Privacy Policy at any time. Updates will be posted 
+        with revised dates, and continued use of the platform shall constitute acceptance of the updated provisions.
+      </p>
+      <p>
+        By continuing to use CryptoLoop, you acknowledge that you have read and understood this Privacy Policy, regardless of 
+        difficulty in readability, and consent to the processing of your personal information as outlined herein.
+      </p>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-[#0f1b2c] text-center text-xs text-gray-500 py-3">
+    © <span id="year"></span> CryptoLoop. All rights reserved.
+  </footer>
+
+  <script>
+    // Auto year
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
