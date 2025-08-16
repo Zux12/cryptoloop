@@ -117,8 +117,10 @@ router.post('/login', async (req, res) => {
 
     // record last login + best-effort geo
     const xfwd = (req.headers['x-forwarded-for'] || '').split(',')[0].trim();
-    user.lastLoginAt = new Date();
-    user.lastLoginIp = xfwd || req.ip || '';
+  const ip = getClientIp(req);
+user.lastLoginAt = new Date();
+user.lastLoginIp = ip || '';
+
     try {
       const { city, country } = await geoFromIp(user.lastLoginIp);
       user.lastLoginCity = city || '';
