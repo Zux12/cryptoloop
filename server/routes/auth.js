@@ -7,13 +7,24 @@ const User = require('../models/User');
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'devsecret';
 
-// helper
+// Optional health check to debug mounting quickly
+router.get('/ping', (req, res) => res.json({ ok: true, scope: 'auth' }));
+
+// ---- helper: IP -> geo (best-effort, no key) ----
 async function geoFromIp(ip) {
   try {
-    if (!ip || /^10\.|^192\.168\.|^172\.(1[6-9]|2\d|3[0-1])\.|^127\.|^::1/.test(ip)) {
+    // skip private/loopback/empty IPs
+    if (
+      !ip ||
+      /^10\./.test(ip) ||
+      /^192\.168\./.test(ip) ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(ip) ||
+      /^127\./.test(ip) ||
+      ip === '::1'
+    ) {
       return { city: '', country: '' };
     }
-    const resp = await fetch(`https://ipapi.co/${ip}/json/`, { timeout: 3000 });
+    const resp = await fetch(`https://ipapi.co/${ip}/json/`);
     if (!resp.ok) return { city: '', country: '' };
     const j = await resp.json();
     return { city: j.city || '', country: j.country_name || j.country || '' };
@@ -21,17 +32,6 @@ async function geoFromIp(ip) {
     return { city: '', country: '' };
   }
 }
-
-// record last login + geo
-const xfwd = (req.headers['x-forwarded-for'] || '').split(',')[0].trim();
-user.lastLoginAt = new Date();
-user.lastLoginIp = xfwd || req.ip || '';
-
-const { city, country } = await geoFromIp(user.lastLoginIp);
-user.lastLoginCity = city;
-user.lastLoginCountry = country;
-
-
 
 // POST /api/auth/signup
 router.post('/signup', async (req, res) => {
@@ -51,7 +51,7 @@ router.post('/signup', async (req, res) => {
       name: String(name).trim(),
       email,
       password: hash,
-      agent,            // must be one of AG1001..AG1020 per schema
+      agent,            // must match your enum (AG10xx)
       isApproved: false // pending by default
     });
 
@@ -78,19 +78,20 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ msg: '⛔ Your account is pending admin approval.' });
     }
 
-    // record last login (works behind proxy)
+    // record last login + best-effort geo
     const xfwd = (req.headers['x-forwarded-for'] || '').split(',')[0].trim();
     user.lastLoginAt = new Date();
     user.lastLoginIp = xfwd || req.ip || '';
-
-    // best-effort geo
     try {
       const { city, country } = await geoFromIp(user.lastLoginIp);
       user.lastLoginCity = city || '';
       user.lastLoginCountry = country || '';
-    } catch { /* ignore geo errors */ }
+    } catch {
+      user.lastLoginCity = '';
+      user.lastLoginCountry = '';
+    }
 
-    await user.save();
+    await user.save(); // single save
 
     const token = jwt.sign(
       { uid: user._id, isAdmin: !!user.isAdmin },
