@@ -1,1 +1,124 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Forgot Password | CryptoLoop</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#0f172a] text-white flex items-center justify-center min-h-screen font-sans">
+  <div class="w-full max-w-md px-8 py-10 bg-[#0f1b2c] rounded-xl shadow-lg">
+    <!-- Header -->
+    <div class="text-center mb-6">
+      <img src="images/logo.png" alt="CryptoLoop Logo" class="max-w-[140px] mx-auto mb-4" />
+      <h1 class="text-lg font-semibold">Forgot your password?</h1>
+      <p class="text-xs text-gray-400 mt-1">Enter your email and we’ll send reset instructions.</p>
+    </div>
+
+    <!-- Banners -->
+    <div id="success-msg" class="hidden text-sm rounded-md bg-emerald-900/40 border border-emerald-600 px-3 py-2 mb-3">
+      ✅ If an account exists for that email, we’ve sent password reset instructions.
+    </div>
+    <div id="error-msg" class="hidden text-sm rounded-md bg-red-900/40 border border-red-600 px-3 py-2 mb-3" aria-live="polite"></div>
+
+    <!-- Form -->
+    <form id="forgot-form" class="space-y-4" novalidate>
+      <div>
+        <label for="email" class="block text-sm mb-1">Email</label>
+        <input id="email" type="email" required inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false"
+               class="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"/>
+      </div>
+
+      <button id="submit-btn" type="submit"
+              class="w-full bg-cyan-500 hover:bg-cyan-600 disabled:opacity-60 disabled:cursor-not-allowed text-white py-2 rounded-md font-semibold transition">
+        Send reset link
+      </button>
+    </form>
+
+    <!-- Footer actions -->
+    <div class="text-center text-sm mt-6 space-y-2">
+      <a href="login.html" class="text-cyan-400 hover:underline">Back to login</a>
+      <div class="text-xs text-gray-500">
+        Need an account?
+        <a href="signup.html" class="text-cyan-400 hover:underline">Create one</a>
+      </div>
+    </div>
+
+    <!-- Terms/Privacy -->
+    <footer class="text-center text-xs text-gray-500 mt-8">
+      <a href="terms.html" target="_blank" class="text-cyan-400 hover:underline">Terms</a> •
+      <a href="privacy.html" target="_blank" class="text-cyan-400 hover:underline">Privacy</a>
+    </footer>
+  </div>
+
+  <script>
+    const form = document.getElementById('forgot-form');
+    const emailEl = document.getElementById('email');
+    const btn = document.getElementById('submit-btn');
+    const successMsg = document.getElementById('success-msg');
+    const errorBox = document.getElementById('error-msg');
+
+    function showError(msg) {
+      errorBox.textContent = msg || 'Something went wrong.';
+      errorBox.classList.remove('hidden');
+    }
+    function clearError() {
+      errorBox.classList.add('hidden');
+      errorBox.textContent = '';
+    }
+    function showSuccess() {
+      successMsg.classList.remove('hidden');
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearError();
+
+      const email = (emailEl.value || '').trim().toLowerCase();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return showError('Please enter a valid email.');
+      }
+
+      // Simple placeholder behavior: pretend it succeeded
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = 'Sending…';
+
+      // Simulate a short delay for UX
+      setTimeout(() => {
+        showSuccess();
+        btn.disabled = false;
+        btn.textContent = original;
+
+        // (Optional) clear field
+        // emailEl.value = '';
+      }, 900);
+
+      /*
+      // When your backend is ready, replace the block above with this:
+      try {
+        btn.disabled = true;
+        const original = btn.textContent;
+        btn.textContent = 'Sending…';
+
+        const res = await fetch('/api/auth/forgot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        // Always show generic success (don’t reveal whether email exists)
+        showSuccess();
+
+      } catch (err) {
+        // Even on error, you can still show generic success to avoid user enumeration
+        showSuccess();
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+      */
+    });
+  </script>
+</body>
+</html>
