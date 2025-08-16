@@ -10,94 +10,189 @@
   <div class="w-full max-w-md px-8 py-10 bg-[#0f1b2c] rounded-xl shadow-lg">
     <!-- Logo -->
     <div class="text-center mb-6">
-        <img src="images/logo.png" alt="CryptoLoop Logo" class="max-w-[160px] mx-auto mb-4" />
-        
-        <p class="text-lg mt-2 font-semibold">Login</p>
-      </div>
-      
+      <img src="images/logo.png" alt="CryptoLoop Logo" class="max-w-[160px] mx-auto mb-4" />
+      <p class="text-lg mt-2 font-semibold">Log in to CryptoLoop</p>
+      <p class="text-xs text-gray-400 mt-1">Welcome back</p>
+    </div>
+
+    <!-- Inline banners -->
+    <div id="success-msg" class="hidden text-sm rounded-md bg-emerald-900/40 border border-emerald-600 px-3 py-2 mb-3">
+      ✅ Login successful. Redirecting…
+    </div>
+    <div id="error-msg" class="hidden text-sm rounded-md bg-red-900/40 border border-red-600 px-3 py-2 mb-3" aria-live="polite"></div>
 
     <!-- Login Form -->
-    <form id="login-form" class="space-y-4">
+    <form id="login-form" class="space-y-4" novalidate>
       <div>
         <label for="email" class="block text-sm mb-1">Email</label>
-        <input id="email" type="email" required class="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"/>
+        <input id="email" type="email" required inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false"
+               class="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"/>
       </div>
 
       <div>
         <label for="password" class="block text-sm mb-1">Password</label>
-        <input id="password" type="password" required class="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"/>
+        <div class="relative">
+          <input id="password" type="password" required autocomplete="current-password"
+                 class="w-full px-4 py-2 pr-12 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"/>
+          <button type="button" id="toggle-pass" class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-cyan-300 hover:text-cyan-200">
+            Show
+          </button>
+        </div>
+        <div id="caps-hint" class="hidden text-[11px] text-amber-300 mt-1">⚠️ Caps Lock is ON</div>
       </div>
 
-      <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-2 rounded-md font-semibold transition">Log in</button>
+      <div class="flex items-center justify-between">
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input id="remember" type="checkbox" class="rounded border-gray-600 bg-gray-800">
+          <span>Remember my email</span>
+        </label>
+        <a href="forgot.html" class="text-cyan-300 hover:underline text-sm">Forgot password?</a>
+      </div>
+
+      <button id="submit-btn" type="submit"
+              class="w-full bg-cyan-500 hover:bg-cyan-600 disabled:opacity-60 disabled:cursor-not-allowed text-white py-2 rounded-md font-semibold transition">
+        Log in
+      </button>
     </form>
 
     <!-- Footer Links -->
     <div class="text-center text-sm mt-6">
-      <a href="#" class="text-cyan-400 hover:underline">Forgot password?</a>
-      <br />
-      <a href="signup.html" class="text-cyan-400 hover:underline mt-1 inline-block">Sign up</a>
+      <span class="text-gray-400">New here?</span>
+      <a href="signup.html" class="text-cyan-400 hover:underline ml-1">Create an account</a>
     </div>
 
-    <!-- Error -->
-    <p id="error-msg" class="text-red-500 mt-4 text-center text-sm"></p>
+    <!-- Terms & Privacy Footer -->
+    <footer class="text-center text-xs text-gray-500 mt-8">
+      <a href="terms.html" target="_blank" class="text-cyan-400 hover:underline">Terms</a> • 
+      <a href="privacy.html" target="_blank" class="text-cyan-400 hover:underline">Privacy</a>
+    </footer>
   </div>
 
   <script>
-  const form = document.getElementById('login-form');
-  const errorMsg = document.getElementById('error-msg');
+    const form = document.getElementById('login-form');
+    const errorBox = document.getElementById('error-msg');
+    const successMsg = document.getElementById('success-msg');
+    const btn = document.getElementById('submit-btn');
+    const emailEl = document.getElementById('email');
+    const passEl = document.getElementById('password');
+    const capsHint = document.getElementById('caps-hint');
+    const rememberCb = document.getElementById('remember');
+    const toggleBtn = document.getElementById('toggle-pass');
 
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const email = document.getElementById('email').value.trim().toLowerCase();
-    const password = document.getElementById('password').value;
-
-    let res, data;
-    try {
-      res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      data = await res.json();
-    } catch (err) {
-      errorMsg.textContent = '❌ Network error. Please try again.';
-      return;
+    function showError(msg) {
+      errorBox.textContent = msg || 'Something went wrong.';
+      errorBox.classList.remove('hidden');
+    }
+    function clearError() {
+      errorBox.classList.add('hidden');
+      errorBox.textContent = '';
+    }
+    function showSuccess() {
+      successMsg.classList.remove('hidden');
     }
 
-    if (!res.ok) {
-      // Will also show the “pending admin approval” message on 403
-      errorMsg.textContent = data.msg || 'Login failed';
-      return;
+    // Show/Hide password
+    toggleBtn.addEventListener('click', () => {
+      const isPw = passEl.type === 'password';
+      passEl.type = isPw ? 'text' : 'password';
+      toggleBtn.textContent = isPw ? 'Hide' : 'Show';
+      passEl.focus();
+    });
+
+    // Caps Lock detection
+    function capsCheck(e) {
+      const on = e.getModifierState && e.getModifierState('CapsLock');
+      capsHint.classList.toggle('hidden', !on);
+    }
+    passEl.addEventListener('keyup', capsCheck);
+    passEl.addEventListener('keydown', capsCheck);
+
+    // Remember email
+    const savedEmail = localStorage.getItem('remember_email');
+    if (savedEmail) {
+      emailEl.value = savedEmail;
+      rememberCb.checked = true;
     }
 
-    const token = data.token;
-    if (!token) {
-      errorMsg.textContent = '❌ Missing token from server';
-      return;
-    }
+    // Fail counter -> cooldown
+    let failCount = 0;
+    let cooldownUntil = 0;
 
-    // Decode JWT payload without external libs
-    let payload = {};
-    try {
-      payload = JSON.parse(atob(token.split('.')[1] || ''));
-    } catch (err) {
-      errorMsg.textContent = '❌ Invalid token received';
-      return;
-    }
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearError();
 
-    const isAdmin = !!payload.isAdmin;
+      const now = Date.now();
+      if (cooldownUntil && now < cooldownUntil) {
+        const left = Math.ceil((cooldownUntil - now) / 1000);
+        return showError(`Too many attempts. Try again in ${left}s.`);
+      }
 
-    localStorage.setItem('token', token);
-    // optional: store role/email for convenience
-    localStorage.setItem('isAdmin', String(isAdmin));
-    localStorage.setItem('email', email);
+      const email = emailEl.value.trim().toLowerCase();
+      const password = passEl.value;
 
-    // Redirect based on role
-    window.location.href = isAdmin ? 'admin.html' : 'dashboard.html';
-  });
-</script>
+      if (!email || !password) {
+        return showError('Please enter both email and password.');
+      }
 
-  
+      btn.disabled = true;
+      const originalText = btn.textContent;
+      btn.textContent = 'Logging in…';
+
+      let res, data;
+      try {
+        res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        data = await res.json();
+      } catch (err) {
+        btn.disabled = false; btn.textContent = originalText;
+        return showError('❌ Network error. Please try again.');
+      }
+
+      if (!res.ok) {
+        failCount++;
+        if (failCount >= 3) {
+          cooldownUntil = Date.now() + 15000; // 15s lock
+          failCount = 0;
+        }
+        btn.disabled = false; btn.textContent = originalText;
+        return showError(data.msg || 'Login failed');
+      }
+
+      const token = data.token;
+      if (!token) {
+        btn.disabled = false; btn.textContent = originalText;
+        return showError('❌ Missing token from server');
+      }
+
+      let payload = {};
+      try {
+        payload = JSON.parse(atob(token.split('.')[1] || ''));
+      } catch (err) {
+        btn.disabled = false; btn.textContent = originalText;
+        return showError('❌ Invalid token received');
+      }
+
+      const isAdmin = !!payload.isAdmin;
+
+      if (rememberCb.checked) {
+        localStorage.setItem('remember_email', email);
+      } else {
+        localStorage.removeItem('remember_email');
+      }
+
+      localStorage.setItem('token', token);
+      localStorage.setItem('isAdmin', String(isAdmin));
+      localStorage.setItem('email', email);
+
+      showSuccess();
+      setTimeout(() => {
+        window.location.href = isAdmin ? 'admin.html' : 'dashboard.html';
+      }, 700);
+    });
+  </script>
 </body>
 </html>
