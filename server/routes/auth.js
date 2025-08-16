@@ -10,6 +10,31 @@ const JWT_SECRET = process.env.JWT_SECRET || 'devsecret';
 // Optional health check to debug mounting quickly
 router.get('/ping', (req, res) => res.json({ ok: true, scope: 'auth' }));
 
+// Prefer real client IP (Render/Cloudflare/NGINX/CDN safe)
+function getClientIp(req) {
+  const chain =
+    req.headers['cf-connecting-ip'] ||               // Cloudflare
+    req.headers['x-real-ip'] ||                      // NGINX/Proxies
+    req.headers['x-forwarded-for'] ||                // Comma-separated list
+    req.ip ||
+    '';
+
+  // If it's a list, take the first
+  const first = String(chain).split(',')[0].trim();
+
+  // Ignore private/loopback ranges
+  const isPrivate =
+    /^10\./.test(first) ||
+    /^192\.168\./.test(first) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(first) ||
+    /^127\./.test(first) ||
+    first === '::1';
+
+  return isPrivate ? '' : first;
+}
+
+
+
 // ---- helper: IP -> geo (best-effort, no key) ----
 async function geoFromIp(ip) {
   try {
