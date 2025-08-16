@@ -5,456 +5,583 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Panel | CryptoLoop</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="color-scheme" content="dark">
+  <style>
+    .badge{@apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold}
+    .badge-green{ @apply bg-emerald-900/40 text-emerald-300 ring-1 ring-emerald-700/40 }
+    .badge-red{   @apply bg-red-900/40 text-red-300 ring-1 ring-red-700/40 }
+    .badge-yellow{@apply bg-yellow-900/40 text-yellow-300 ring-1 ring-yellow-700/40 }
+    .badge-blue{  @apply bg-blue-900/40 text-blue-300 ring-1 ring-blue-700/40 }
+    .card{ @apply bg-gray-900/60 border border-gray-800 rounded-xl shadow-lg }
+    .tbl{  @apply min-w-full text-sm bg-gray-900/50 }
+    .th{   @apply p-2 border border-gray-800 bg-gray-800/80 text-left font-semibold sticky top-0 z-10 }
+    .td{   @apply p-2 border border-gray-800 align-top }
+    .row{  @apply border-b border-gray-800 hover:bg-gray-800/40 transition-colors }
+    .skeleton{ @apply animate-pulse bg-gray-800/80 rounded }
+    .btn{ @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 font-semibold transition-colors }
+    .btn-ghost{ @apply hover:bg-gray-800/60 border border-gray-800 }
+    .btn-primary{ @apply bg-emerald-600 hover:bg-emerald-500 text-white }
+    .btn-danger{ @apply bg-red-600 hover:bg-red-500 text-white }
+    .btn-warning{ @apply bg-yellow-600 hover:bg-yellow-500 text-white }
+    .btn-info{ @apply bg-blue-600 hover:bg-blue-500 text-white }
+    .input{ @apply w-full rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-600 }
+    .toolbar{ @apply flex flex-wrap items-center gap-2 }
+    .table-wrap{ @apply overflow-auto max-w-full }
+  </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen px-6 py-6 font-sans">
+<body class="bg-gray-950 text-gray-100 min-h-screen font-sans selection:bg-emerald-700 selection:text-white">
 
-  <!-- Top bar with logo and logout -->
-  <div class="flex justify-between items-center mb-6">
-    <div class="flex items-center gap-3">
-      <img src="images/logo.png" alt="CryptoLoop Logo" class="h-10 w-auto" />
-      <h1 class="text-2xl font-bold">CryptoLoop Admin</h1>
+  <!-- Sticky Top Bar -->
+  <header class="sticky top-0 z-40 border-b border-gray-800 bg-gray-950/80 backdrop-blur">
+    <div class="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <img src="images/logo.png" alt="CryptoLoop Logo" class="h-9 w-auto rounded" />
+        <div>
+          <h1 class="text-xl md:text-2xl font-bold tracking-tight">CryptoLoop Admin</h1>
+          <p class="text-xs text-gray-400">Manage users, approvals & portfolio snapshots</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-sm flex items-center gap-2">
+          <input id="autoRefreshToggle" type="checkbox" class="h-4 w-4 rounded border-gray-700 bg-gray-900" />
+          Auto-refresh (30s)
+        </label>
+        <button id="refreshAllBtn" class="btn btn-ghost">🔄 Refresh all</button>
+        <button onclick="logout()" class="btn btn-danger">🔐 Logout</button>
+      </div>
     </div>
-    <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-semibold">
-      🔐 Logout
-    </button>
+  </header>
+
+  <!-- Toast / Status -->
+  <div id="toast" class="fixed left-1/2 -translate-x-1/2 top-4 z-50 hidden">
+    <div id="toastInner" class="rounded-lg border border-gray-800 bg-gray-900/90 px-4 py-2 text-sm shadow-xl"></div>
   </div>
 
-  <!-- Status message -->
-  <p id="status-msg" class="text-center text-sm text-green-400 mb-4"></p>
+  <main class="mx-auto max-w-7xl px-4 py-6 space-y-10">
 
+    <!-- USERS (Admin Approval) -->
+    <section class="card p-4">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <div>
+          <h2 class="text-lg md:text-xl font-bold">👥 Users (Approval)</h2>
+          <p class="text-xs text-gray-400">Review new signups and toggle access</p>
+        </div>
+        <div class="toolbar">
+          <input id="userSearch" class="input" placeholder="Search users by email/name/agent…" />
+          <select id="userFilter" class="input max-w-[180px]">
+            <option value="all">All</option>
+            <option value="approved">Approved</option>
+            <option value="pending">Pending</option>
+          </select>
+          <button id="refreshUsersBtn" class="btn btn-ghost">🔄 Refresh</button>
+        </div>
+      </div>
 
-<!-- Users Table (Admin Approval) -->
-<h2 class="text-xl font-bold mb-3">👥 Users (Approval)</h2>
-<div class="overflow-x-auto border border-gray-700 rounded mb-10">
-  <table class="min-w-full text-sm bg-gray-800">
-    <thead class="bg-gray-700 text-white">
-      <tr>
-        <th class="p-2 border">Email</th>
-        <th class="p-2 border">Name</th>
-        <th class="p-2 border">Agent</th>
-        <th class="p-2 border">Status</th>
-        <th class="p-2 border">Created</th>
-        <th class="p-2 border text-center">Actions</th>
-      </tr>
-    </thead>
-    <tbody id="admin-users-body" class="text-white"></tbody>
-  </table>
-</div>
+      <div class="table-wrap rounded-lg">
+        <table class="tbl">
+          <thead class="bg-gray-800">
+            <tr>
+              <th class="th">Email</th>
+              <th class="th">Name</th>
+              <th class="th">Agent</th>
+              <th class="th">Status</th>
+              <th class="th">Created</th>
+              <th class="th text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="admin-users-body"></tbody>
+        </table>
+      </div>
+    </section>
 
+    <!-- BUY REQUESTS -->
+    <section class="card p-4">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <div>
+          <h2 class="text-lg md:text-xl font-bold">🟢 Pending Buy Requests</h2>
+          <p class="text-xs text-gray-400">Approve or reject incoming buy orders</p>
+        </div>
+        <div class="toolbar">
+          <button id="refreshBuyBtn" class="btn btn-ghost">🔄 Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrap rounded-lg">
+        <table class="tbl">
+          <thead class="bg-gray-800">
+            <tr>
+              <th class="th">User</th>
+              <th class="th">Symbol</th>
+              <th class="th">USD</th>
+              <th class="th">Amount</th>
+              <th class="th">Timestamp</th>
+              <th class="th text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="admin-buy-request-body"></tbody>
+        </table>
+      </div>
+    </section>
 
-  
-<!-- Buy Requests Table -->
-<h2 class="text-lg font-bold mt-6 mb-2">🟢 Pending Buy Requests</h2>
-<div class="overflow-x-auto">
-  <table class="min-w-full text-sm bg-gray-800">
-    <thead class="bg-gray-700 text-white">
-      <tr>
-        <th class="p-2 border">User</th>
-        <th class="p-2 border">Symbol</th>
-        <th class="p-2 border">USD</th>
-        <th class="p-2 border">Amount</th>
-        <th class="p-2 border">Timestamp</th>
-        <th class="p-2 border text-center">Actions</th>
-      </tr>
-    </thead>
-    <tbody id="admin-buy-request-body" class="text-white"></tbody>
-  </table>
-</div>
+    <!-- SELL REQUESTS -->
+    <section class="card p-4">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <div>
+          <h2 class="text-lg md:text-xl font-bold">🛒 Pending Sell Requests</h2>
+          <p class="text-xs text-gray-400">Handle approval, freeze, transfer, or rejection</p>
+        </div>
+        <div class="toolbar">
+          <button id="refreshSellBtn" class="btn btn-ghost">🔄 Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrap rounded-lg">
+        <table class="tbl">
+          <thead class="bg-gray-800">
+            <tr>
+              <th class="th">User</th>
+              <th class="th">Symbol</th>
+              <th class="th">Amount</th>
+              <th class="th">Timestamp</th>
+              <th class="th">Status</th>
+              <th class="th">Status Timestamp</th>
+              <th class="th text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="admin-sell-body"></tbody>
+        </table>
+      </div>
+    </section>
 
-
-<!-- Sell Table -->
-<h2 class="text-xl font-bold mt-10 mb-4">🛒 Pending Sell Requests</h2>
-<div class="overflow-x-auto border border-gray-700 rounded">
-  <table class="min-w-full text-sm bg-gray-800">
-    <thead class="bg-gray-700 text-white">
-      <tr>
-        <th class="p-2 border">User</th>
-        <th class="p-2 border">Symbol</th>
-        <th class="p-2 border">Amount</th>
-        <th class="p-2 border">Timestamp</th>
-        <th class="p-2 border">Status</th>
-        <th class="p-2 border">Status Timestamp</th>
-        <th class="p-2 border text-center">Actions</th>
-      </tr>
-    </thead>
-    <tbody id="admin-sell-body" class="text-white"></tbody>
-  </table>
-</div>
-
-<!-- Accounts Overview -->
-<h2 class="text-xl font-bold mt-10 mb-3">📒 Accounts Overview</h2>
-<div class="overflow-x-auto border border-gray-700 rounded mb-10">
-  <table class="min-w-full text-sm bg-gray-800">
-<thead class="bg-gray-700 text-white">
-  <tr>
-    <th class="p-2 border">Name</th>
-    <th class="p-2 border">Email</th>
-    <th class="p-2 border">Agent</th>
-    <th class="p-2 border">Approved</th>
-    <th class="p-2 border">Last Login</th>
-    <th class="p-2 border">Location</th>
-    <th class="p-2 border">Wallet</th>
-    <th class="p-2 border">TPV (USD)</th>
-    <th class="p-2 border">AI Value</th>
-    <th class="p-2 border">AI Updated</th>
-  </tr>
-</thead>
-
-    <tbody id="admin-accounts-body" class="text-white"></tbody>
-  </table>
-</div>
-
+    <!-- ACCOUNTS OVERVIEW -->
+    <section class="card p-4">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <div>
+          <h2 class="text-lg md:text-xl font-bold">📒 Accounts Overview</h2>
+          <p class="text-xs text-gray-400">User wallet snapshots, TPV and AI values</p>
+        </div>
+        <div class="toolbar">
+          <button id="exportCsvBtn" class="btn btn-info">⬇️ Export CSV</button>
+          <button id="refreshOverviewBtn" class="btn btn-ghost">🔄 Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrap rounded-lg">
+        <table class="tbl">
+          <thead class="bg-gray-800">
+            <tr>
+              <th class="th">Name</th>
+              <th class="th">Email</th>
+              <th class="th">Agent</th>
+              <th class="th">Approved</th>
+              <th class="th">Last Login</th>
+              <th class="th">Location</th>
+              <th class="th">Wallet</th>
+              <th class="th">TPV (USD)</th>
+              <th class="th">AI Value</th>
+              <th class="th">AI Updated</th>
+            </tr>
+          </thead>
+          <tbody id="admin-accounts-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
 
 <script>
-  // --- quick auth check (keeps your current UX) ---
-  (async function ensureAdmin() {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      window.location.href = '/login.html';
-      return;
-    }
-    try {
-      const r = await fetch('/api/admin/ping', {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      if (r.status === 401) {
-        localStorage.removeItem('token');
-        alert('Session expired. Please log in again.');
-        window.location.href = '/login.html';
-        return;
-      }
-      if (r.status === 403) {
-        alert('Your account is not an admin.');
-        window.location.href = '/dashboard.html';
-        return;
-      }
-    } catch (e) {
-      console.error('Admin ping error:', e);
-    }
-  })();
+/* ======================
+   Small utils
+====================== */
+const $ = (sel, root=document) => root.querySelector(sel);
+const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+const fmtMoney = (n) => {
+  const v = Number(n || 0);
+  return isFinite(v) ? v.toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }) : '-';
+};
+const fmtDate = (d) => d ? new Date(d).toLocaleString() : '—';
 
-  // Redundant safety redirect
-  if (!localStorage.getItem('token')) {
-    window.location.href = '/login.html';
+function showToast(msg, type='neutral'){
+  const wrap = $('#toast'), inner = $('#toastInner');
+  inner.textContent = msg;
+  inner.className = 'rounded-lg border px-4 py-2 text-sm shadow-xl ' + (
+    type === 'ok' ? 'border-emerald-800 bg-emerald-900/90 text-emerald-100' :
+    type === 'err'? 'border-red-800 bg-red-900/90 text-red-100' :
+                    'border-gray-800 bg-gray-900/90 text-gray-100'
+  );
+  wrap.classList.remove('hidden');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>wrap.classList.add('hidden'), 2600);
+}
+
+/* ======================
+   Auth Gate
+====================== */
+(async function ensureAdmin(){
+  const token = localStorage.getItem('token');
+  if(!token){ return location.replace('/login.html'); }
+  try{
+    const r = await fetch('/api/admin/ping', { headers:{ Authorization:'Bearer '+token }});
+    if(r.status === 401){ localStorage.removeItem('token'); alert('Session expired. Please log in again.'); return location.replace('/login.html'); }
+    if(r.status === 403){ alert('Your account is not an admin.'); return location.replace('/dashboard.html'); }
+  }catch(e){ console.error('Admin ping error:', e); }
+})();
+
+function logout(){
+  localStorage.removeItem('token');
+  location.href = '/login.html';
+}
+window.logout = logout;
+
+/* ======================
+   Fetch helper
+====================== */
+async function fetchJSON(url, opts={}){
+  const token = localStorage.getItem('token') || '';
+  const headers = {
+    'Content-Type':'application/json',
+    ...(opts.headers||{}),
+    ...(token? { Authorization:'Bearer '+token } : {})
+  };
+  const res = await fetch(url, { ...opts, headers });
+  if(res.status === 401){ localStorage.removeItem('token'); showToast('Session expired','err'); setTimeout(()=>location.replace('/login.html'), 800); }
+  if(res.status === 403){ showToast('Admin only area','err'); setTimeout(()=>location.replace('/dashboard.html'), 800); }
+  let data=null, raw=null;
+  try{ raw = await res.text(); data = raw ? JSON.parse(raw) : null; }catch{ raw = raw || ''; }
+  return { ok: res.ok, status: res.status, data, raw };
+}
+
+/* =========================
+   USERS (Approval)
+========================= */
+let _usersCache = [];
+
+function renderUsersTable(users){
+  const tbody = $('#admin-users-body');
+  if(!users.length){
+    tbody.innerHTML = `<tr><td class="td text-center text-gray-400" colspan="6">No users found</td></tr>`;
+    return;
   }
-
-  const statusMsg = document.getElementById('status-msg');
-
-  // --- tiny debug logger to page (optional) ---
-  function log(...args) {
-    console.log(...args);
-    let box = document.getElementById('debug-box');
-    if (!box) {
-      box = document.createElement('pre');
-      box.id = 'debug-box';
-      box.className = 'mt-4 p-3 bg-gray-800 text-xs text-gray-200 rounded overflow-x-auto';
-      statusMsg.insertAdjacentElement('afterend', box);
-    }
-    box.textContent += args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ') + '\n';
-  }
-
-  // --- fetch helper with auth + logging ---
-  async function fetchJSON(url, opts = {}) {
-    const token = localStorage.getItem('token') || '';
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(opts.headers || {}),
-      ...(token ? { Authorization: 'Bearer ' + token } : {})
-    };
-    const res = await fetch(url, { ...opts, headers });
-    const text = await res.text();
-    let json = null;
-    try { json = text ? JSON.parse(text) : null; } catch {}
-    log('🛰️', opts.method || 'GET', url, '→', res.status, '| body:', text.slice(0, 300));
-    return { ok: res.ok, status: res.status, data: json, raw: text };
-  }
-
-  /* =========================
-   * USERS (Approval)
-   * ========================= */
-  async function loadUsers() {
-    const r = await fetchJSON('/api/admin/users');
-    const tbody = document.getElementById('admin-users-body');
-    tbody.innerHTML = '';
-    if (!r.ok) {
-      tbody.innerHTML = `<tr><td colspan="6" class="p-3 text-center text-red-400">❌ /api/admin/users ${r.status} — ${r.raw || 'Failed'}</td></tr>`;
-      if (r.status === 401 || r.status === 403) statusMsg.textContent = '⛔ Admin access required.';
-      return;
-    }
-    const users = Array.isArray(r.data) ? r.data : [];
-    if (!users.length) {
-      tbody.innerHTML = `<tr><td colspan="6" class="p-3 text-center text-gray-400">No users found</td></tr>`;
-      return;
-    }
-    tbody.innerHTML = users.map(u => `
-      <tr class="border-b border-gray-700">
-        <td class="p-2 border">${u.email}</td>
-        <td class="p-2 border">${u.name}</td>
-        <td class="p-2 border">${u.agent || '-'}</td>
-        <td class="p-2 border">${u.isApproved ? '✅ Approved' : '❌ Pending'}</td>
-        <td class="p-2 border">${u.createdAt ? new Date(u.createdAt).toLocaleString() : '-'}</td>
-        <td class="p-2 border text-center">
+  tbody.innerHTML = users.map(u => {
+    const statusBadge = u.isApproved
+      ? `<span class="badge badge-green">✅ Approved</span>`
+      : `<span class="badge badge-red">❌ Pending</span>`;
+    return `
+      <tr class="row">
+        <td class="td break-all">
+          <button class="underline underline-offset-2 text-emerald-300 hover:text-emerald-200" title="Copy email" onclick="navigator.clipboard.writeText('${u.email}'); showToast('Email copied','ok')">${u.email}</button>
+        </td>
+        <td class="td">${u.name || '-'}</td>
+        <td class="td">${u.agent || '-'}</td>
+        <td class="td">${statusBadge}</td>
+        <td class="td">${fmtDate(u.createdAt)}</td>
+        <td class="td text-center">
           ${u.isApproved ? '—' : `
-            <button class="bg-emerald-600 hover:bg-emerald-500 px-3 py-1 rounded text-xs"
-              onclick="approveUser('${u._id}')">Approve</button>
-            <button class="bg-red-600 hover:bg-red-500 px-3 py-1 rounded text-xs ml-2"
-              onclick="rejectUser('${u._id}')">Reject</button>
+            <div class="flex items-center justify-center gap-2">
+              <button class="btn btn-primary px-2 py-1 text-xs" onclick="approveUser('${u._id}')">Approve</button>
+              <button class="btn btn-danger px-2 py-1 text-xs" onclick="rejectUser('${u._id}')">Reject</button>
+            </div>
           `}
         </td>
       </tr>
-    `).join('');
-  }
+    `;
+  }).join('');
+}
 
-  async function approveUser(id) {
-    const r = await fetch(`/api/admin/approve/${id}`, {
-      method: 'PATCH',
-      headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }
-    });
-    const data = await r.json().catch(() => ({}));
-    if (r.ok) {
-      statusMsg.textContent = '✅ User approved';
-      await loadUsers();
-    } else {
-      statusMsg.textContent = `❌ Approve failed: ${data.msg || r.status}`;
-    }
-    setTimeout(() => (statusMsg.textContent = ''), 2500);
-  }
+async function loadUsers(){
+  skeletonRows('#admin-users-body', 4, 6);
+  const r = await fetchJSON('/api/admin/users');
+  if(!r.ok){ return setErrorRow('#admin-users-body', 6, `/api/admin/users ${r.status}`); }
+  _usersCache = Array.isArray(r.data) ? r.data : [];
+  applyUserFilters();
+}
 
-  async function rejectUser(id) {
-    if (!confirm('Remove this user?')) return;
-    const r = await fetch(`/api/admin/reject/${id}`, {
-      method: 'PATCH',
-      headers: { Authorization: 'Bearer ' + (localStorage.getItem('token') || '') }
-    });
-    const data = await r.json().catch(() => ({}));
-    if (r.ok) {
-      statusMsg.textContent = '✅ User removed';
-      await loadUsers();
-    } else {
-      statusMsg.textContent = `❌ Reject failed: ${data.msg || r.status}`;
-    }
-    setTimeout(() => (statusMsg.textContent = ''), 2500);
-  }
-
-  /* =========================
-   * BUY REQUESTS
-   * ========================= */
-  async function fetchRequests() {
-    const r = await fetchJSON('/api/admin/buy-requests');
-    const buyTable = document.getElementById('admin-buy-request-body');
-    buyTable.innerHTML = '';
-    if (!r.ok) {
-      buyTable.innerHTML = `<tr><td colspan="6" class="p-3 text-center text-red-400">❌ /api/admin/buy-requests ${r.status} — ${r.raw || 'Failed'}</td></tr>`;
-      return;
-    }
-    const rows = Array.isArray(r.data) ? r.data : [];
-    if (!rows.length) {
-      buyTable.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 p-4">No pending buy requests</td></tr>';
-      return;
-    }
-    rows.forEach(req => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="p-2 border">${req.user}</td>
-        <td class="p-2 border">${req.symbol}</td>
-        <td class="p-2 border">$${req.usd}</td>
-        <td class="p-2 border">${req.amount}</td>
-        <td class="p-2 border">${new Date(req.timestamp).toLocaleString()}</td>
-        <td class="p-2 border text-center space-x-2">
-          <button onclick="handleBuyAction('${req._id}', 'approve')" class="text-green-400 hover:text-green-600 font-semibold">✅ Approve</button>
-          <button onclick="handleBuyAction('${req._id}', 'reject')" class="text-red-400 hover:text-red-600 font-semibold">❌ Reject</button>
-        </td>
-      `;
-      buyTable.appendChild(tr);
-    });
-  }
-
-  async function handleBuyAction(id, action) {
-    const endpoint = action === 'approve' ? '/api/admin/approve' : '/api/admin/reject';
-    const r = await fetchJSON(endpoint, { method: 'POST', body: JSON.stringify({ id }) });
-    if (r.ok) {
-      statusMsg.textContent = `✅ Request ${action}d successfully`;
-      fetchRequests();
-    } else {
-      statusMsg.textContent = `❌ Buy ${action} failed: ${r.raw || r.status}`;
-    }
-    setTimeout(() => statusMsg.textContent = '', 3000);
-  }
-
-  /* =========================
-   * SELL REQUESTS
-   * ========================= */
-  async function fetchSellRequests() {
-    const r = await fetchJSON('/api/admin/sell-requests');
-    const body = document.getElementById('admin-sell-body');
-    body.innerHTML = '';
-    if (!r.ok) {
-      body.innerHTML = `<tr><td colspan="7" class="p-3 text-center text-red-400">❌ /api/admin/sell-requests ${r.status} — ${r.raw || 'Failed'}</td></tr>`;
-      return;
-    }
-    const requests = Array.isArray(r.data) ? r.data : [];
-    if (!requests.length) {
-      body.innerHTML = '<tr><td colspan="7" class="text-center text-gray-400 p-4">No pending sell requests</td></tr>';
-      return;
-    }
-    requests.forEach(req => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="p-2 border">${req.user}</td>
-        <td class="p-2 border">${req.symbol}</td>
-        <td class="p-2 border">${req.amount}</td>
-        <td class="p-2 border">${new Date(req.timestamp).toLocaleString()}</td>
-        <td class="p-2 border">${req.status}</td>
-        <td class="p-2 border">${req.statusTimestamp ? new Date(req.statusTimestamp).toLocaleString() : '-'}</td>
-        <td class="p-2 border text-center space-x-2">
-          ${req.status === 'Pending' || req.status === 'Frozen' ? `
-            <button onclick="updateSellStatus('${req._id}', 'approve')" class="text-green-400 hover:text-green-600 font-semibold">✅ Approve</button>
-            <button onclick="updateSellStatus('${req._id}', 'reject')" class="text-red-400 hover:text-red-600 font-semibold">❌ Reject</button>
-            <button onclick="updateSellStatus('${req._id}', 'frozen')" class="text-yellow-400 hover:text-yellow-600 font-semibold">🧊 Freeze</button>
-            <button onclick="updateSellStatus('${req._id}', 'transfer')" class="text-blue-400 hover:text-blue-600 font-semibold">💸 Transfer</button>
-          ` : '—'}
-        </td>
-      `;
-      body.appendChild(tr);
-    });
-  }
-
-  async function updateSellStatus(id, status) {
-    const r = await fetchJSON('/api/admin/sell-update', { method: 'POST', body: JSON.stringify({ id, status }) });
-    if (r.ok) {
-      statusMsg.textContent = `✅ ${status} successful`;
-      fetchSellRequests();
-    } else {
-      statusMsg.textContent = `❌ sell-update failed: ${r.raw || r.status}`;
-    }
-    setTimeout(() => statusMsg.textContent = '', 3000);
-  }
-
-  // --- logout must be on window for inline onclick ---
-  function logout() {
-    localStorage.removeItem('token');
-    window.location.href = '/login.html';
-  }
-  window.logout = logout;
-
-  // --- sanity check current user (optional) ---
-  (async function sanity() {
-    const me = await fetchJSON('/api/user/me');
-    if (!me.ok) {
-      statusMsg.textContent = '❌ Auth check failed. Please log in again.';
-      return;
-    }
-    log('👤 /api/user/me →', me.data);
-    if (!me.data?.isAdmin) {
-      statusMsg.textContent = '⛔ You are not an admin.';
-    }
-  })();
-
-  /* =========================
-   * ACCOUNTS OVERVIEW (TPV + AI)
-   * ========================= */
-  const ID_MAP = {
-    btc:'bitcoin', eth:'ethereum', usdt:'tether', usdc:'usd-coin',
-    bnb:'binancecoin', xrp:'ripple', ada:'cardano', sol:'solana',
-    doge:'dogecoin', dot:'polkadot', matic:'polygon', shib:'shiba-inu',
-    trx:'tron', ltc:'litecoin', avax:'avalanche-2', link:'chainlink',
-    uni:'uniswap', atom:'cosmos', xlm:'stellar', bch:'bitcoin-cash',
-    icp:'internet-computer', etc:'ethereum-classic', vet:'vechain',
-    fil:'filecoin', apt:'aptos', hbar:'hedera-hashgraph', near:'near'
-  };
-
-  async function loadAccountsOverview() {
-    const r = await fetchJSON('/api/admin/users/overview');
-    const tbody = document.getElementById('admin-accounts-body');
-    if (!tbody) return;
-
-    tbody.innerHTML = '';
-
-    if (!r.ok) {
-      tbody.innerHTML = `<tr><td colspan="10" class="p-3 text-center text-red-400">
-        ❌ /api/admin/users/overview ${r.status} — ${r.raw || 'Failed'}
-      </td></tr>`;
-      return;
-    }
-
-    const rows = Array.isArray(r.data) ? r.data : [];
-    if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="10" class="p-3 text-center text-gray-400">No users</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = rows.map(u => {
-      const w = u.wallet || {};
-      const walletShort = Object.keys(w).length
-        ? Object.entries(w).map(([k,v]) => `${k.toUpperCase()}:${(+v).toFixed(6)}`).join(', ')
-        : '—';
-      const location = [u.lastLoginCity, u.lastLoginCountry].filter(Boolean).join(', ') || '—';
-
-      return `
-        <tr class="border-b border-gray-700" data-user-id="${u._id}">
-          <td class="p-2 border">${u.name || '-'}</td>
-          <td class="p-2 border">${u.email}</td>
-          <td class="p-2 border">${u.agent || '-'}</td>
-          <td class="p-2 border">${u.isApproved ? '✅' : '❌'}</td>
-          <td class="p-2 border">${u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : '-'}</td>
-          <td class="p-2 border">${location}</td>
-          <td class="p-2 border">${walletShort}</td>
-          <td class="p-2 border tpv-cell">…</td>
-          <td class="p-2 border">${u.aiSim?.simulatedValue != null ? '$' + (+u.aiSim.simulatedValue).toFixed(2) : '—'}</td>
-          <td class="p-2 border">${u.aiSim?.lastUpdated ? new Date(u.aiSim.lastUpdated).toLocaleString() : '—'}</td>
-        </tr>
-      `;
-    }).join('');
-
-    await fillTPV(rows);
-  }
-
-  async function fillTPV(users) {
-    const symbols = new Set();
-    users.forEach(u => {
-      const w = u.wallet || {};
-      Object.keys(w).forEach(s => symbols.add(s.toLowerCase()));
-    });
-    if (!symbols.size) return;
-
-    const ids = Array.from(symbols).map(s => ID_MAP[s] || s).filter(Boolean);
-    const uniqueIds = Array.from(new Set(ids));
-    if (!uniqueIds.length) return;
-
-    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(uniqueIds.join(','))}&vs_currencies=usd`;
-    let prices = {};
-    try {
-      const res = await fetch(url);
-      prices = await res.json();
-    } catch (e) {
-      console.warn('TPV price fetch failed', e);
-      return;
-    }
-
-    users.forEach(u => {
-      const w = u.wallet || {};
-      let tpv = 0;
-      for (const [sym, amt] of Object.entries(w)) {
-        const id = ID_MAP[sym.toLowerCase()] || sym.toLowerCase();
-        const p = prices[id]?.usd || 0;
-        tpv += (+amt) * (+p);
-      }
-      const tpvCell = document.querySelector(`tr[data-user-id="${u._id}"] .tpv-cell`);
-      if (tpvCell) tpvCell.textContent = `$${tpv.toFixed(2)}`;
-    });
-  }
-
-  // --- kickoff once DOM is ready (ensures tbody elements exist) ---
-  document.addEventListener('DOMContentLoaded', () => {
-    loadUsers();
-    fetchRequests();
-    fetchSellRequests();
-    loadAccountsOverview();
+function applyUserFilters(){
+  const q = ($('#userSearch')?.value || '').trim().toLowerCase();
+  const f = $('#userFilter')?.value || 'all';
+  const out = _usersCache.filter(u=>{
+    const hits = [u.email, u.name, u.agent].filter(Boolean).join(' ').toLowerCase().includes(q);
+    const pass = f==='all' || (f==='approved' && u.isApproved) || (f==='pending' && !u.isApproved);
+    return hits && pass;
   });
+  renderUsersTable(out);
+}
+
+async function approveUser(id){
+  const r = await fetch(`/api/admin/approve/${id}`, { method:'PATCH', headers:{ Authorization:'Bearer '+(localStorage.getItem('token')||'') }});
+  const j = await r.json().catch(()=>({}));
+  if(r.ok){ showToast('User approved','ok'); await loadUsers(); } else { showToast(`Approve failed: ${j.msg || r.status}`,'err'); }
+}
+
+async function rejectUser(id){
+  if(!confirm('Remove this user?')) return;
+  const r = await fetch(`/api/admin/reject/${id}`, { method:'PATCH', headers:{ Authorization:'Bearer '+(localStorage.getItem('token')||'') }});
+  const j = await r.json().catch(()=>({}));
+  if(r.ok){ showToast('User removed','ok'); await loadUsers(); } else { showToast(`Reject failed: ${j.msg || r.status}`,'err'); }
+}
+
+/* =========================
+   BUY REQUESTS
+========================= */
+async function fetchRequests(){
+  skeletonRows('#admin-buy-request-body', 4, 6);
+  const r = await fetchJSON('/api/admin/buy-requests');
+  const body = $('#admin-buy-request-body');
+  if(!r.ok){ return setErrorRow('#admin-buy-request-body', 6, `/api/admin/buy-requests ${r.status}`); }
+  const rows = Array.isArray(r.data) ? r.data : [];
+  if(!rows.length){ body.innerHTML = `<tr><td class="td text-center text-gray-400" colspan="6">No pending buy requests</td></tr>`; return; }
+
+  body.innerHTML = rows.map(req => `
+    <tr class="row">
+      <td class="td break-all">${req.user}</td>
+      <td class="td">${req.symbol}</td>
+      <td class="td">${fmtMoney(req.usd)}</td>
+      <td class="td">${(+req.amount).toFixed(6)}</td>
+      <td class="td">${fmtDate(req.timestamp)}</td>
+      <td class="td text-center">
+        <div class="flex items-center justify-center gap-2">
+          <button onclick="handleBuyAction('${req._id}', 'approve')" class="btn btn-primary px-2 py-1 text-xs">✅ Approve</button>
+          <button onclick="handleBuyAction('${req._id}', 'reject')" class="btn btn-danger px-2 py-1 text-xs">❌ Reject</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function handleBuyAction(id, action){
+  const endpoint = action === 'approve' ? '/api/admin/approve' : '/api/admin/reject';
+  const r = await fetchJSON(endpoint, { method:'POST', body: JSON.stringify({ id }) });
+  if(r.ok){ showToast(`Buy ${action}d`,'ok'); fetchRequests(); loadAccountsOverview(); }
+  else{ showToast(`Buy ${action} failed: ${r.raw || r.status}`,'err'); }
+}
+
+/* =========================
+   SELL REQUESTS
+========================= */
+async function fetchSellRequests(){
+  skeletonRows('#admin-sell-body', 4, 7);
+  const r = await fetchJSON('/api/admin/sell-requests');
+  const body = $('#admin-sell-body');
+  if(!r.ok){ return setErrorRow('#admin-sell-body', 7, `/api/admin/sell-requests ${r.status}`); }
+  const requests = Array.isArray(r.data) ? r.data : [];
+  if(!requests.length){ body.innerHTML = `<tr><td class="td text-center text-gray-400" colspan="7">No pending sell requests</td></tr>`; return; }
+
+  body.innerHTML = requests.map(req => {
+    const statusBadge =
+      req.status === 'Pending' ? `<span class="badge badge-yellow">Pending</span>` :
+      req.status === 'Frozen'  ? `<span class="badge badge-blue">Frozen</span>`   :
+      req.status === 'Approved'? `<span class="badge badge-green">Approved</span>`:
+                                  `<span class="badge badge-red">Rejected</span>`;
+    const canAct = req.status === 'Pending' || req.status === 'Frozen';
+    return `
+      <tr class="row">
+        <td class="td break-all">${req.user}</td>
+        <td class="td">${req.symbol}</td>
+        <td class="td">${(+req.amount).toFixed(6)}</td>
+        <td class="td">${fmtDate(req.timestamp)}</td>
+        <td class="td">${statusBadge}</td>
+        <td class="td">${fmtDate(req.statusTimestamp)}</td>
+        <td class="td text-center">
+          ${canAct ? `
+            <div class="flex items-center justify-center gap-2">
+              <button onclick="updateSellStatus('${req._id}', 'approve')"  class="btn btn-primary px-2 py-1 text-xs">✅ Approve</button>
+              <button onclick="updateSellStatus('${req._id}', 'reject')"   class="btn btn-danger px-2 py-1 text-xs">❌ Reject</button>
+              <button onclick="updateSellStatus('${req._id}', 'frozen')"   class="btn btn-warning px-2 py-1 text-xs">🧊 Freeze</button>
+              <button onclick="updateSellStatus('${req._id}', 'transfer')" class="btn btn-info px-2 py-1 text-xs">💸 Transfer</button>
+            </div>` : '—'}
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function updateSellStatus(id, status){
+  const r = await fetchJSON('/api/admin/sell-update', { method:'POST', body: JSON.stringify({ id, status }) });
+  if(r.ok){ showToast(`Sell ${status} successful`,'ok'); fetchSellRequests(); loadAccountsOverview(); }
+  else{ showToast(`sell-update failed: ${r.raw || r.status}`,'err'); }
+}
+
+/* =========================
+   ACCOUNTS OVERVIEW (TPV + AI)
+========================= */
+const ID_MAP = {
+  btc:'bitcoin', eth:'ethereum', usdt:'tether', usdc:'usd-coin',
+  bnb:'binancecoin', xrp:'ripple', ada:'cardano', sol:'solana',
+  doge:'dogecoin', dot:'polkadot', matic:'polygon', shib:'shiba-inu',
+  trx:'tron', ltc:'litecoin', avax:'avalanche-2', link:'chainlink',
+  uni:'uniswap', atom:'cosmos', xlm:'stellar', bch:'bitcoin-cash',
+  icp:'internet-computer', etc:'ethereum-classic', vet:'vechain',
+  fil:'filecoin', apt:'aptos', hbar:'hedera-hashgraph', near:'near'
+};
+let _overviewCache = [];
+
+async function loadAccountsOverview(){
+  skeletonRows('#admin-accounts-body', 4, 10);
+  const r = await fetchJSON('/api/admin/users/overview');
+  const tbody = $('#admin-accounts-body');
+  if(!r.ok){ return setErrorRow('#admin-accounts-body', 10, `/api/admin/users/overview ${r.status}`); }
+
+  const rows = Array.isArray(r.data) ? r.data : [];
+  _overviewCache = rows;
+
+  if(!rows.length){
+    tbody.innerHTML = `<tr><td class="td text-center text-gray-400" colspan="10">No users</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(u => {
+    const w = u.wallet || {};
+    const walletShort = Object.keys(w).length
+      ? Object.entries(w).map(([k,v]) => `${k.toUpperCase()}:${(+v).toFixed(6)}`).join(', ')
+      : '—';
+    const location = [u.lastLoginCity, u.lastLoginCountry].filter(Boolean).join(', ') || '—';
+    const aiVal = u.aiSim?.simulatedValue != null ? fmtMoney(+u.aiSim.simulatedValue) : '—';
+    return `
+      <tr class="row" data-user-id="${u._id}">
+        <td class="td">${u.name || '-'}</td>
+        <td class="td break-all">${u.email}</td>
+        <td class="td">${u.agent || '-'}</td>
+        <td class="td">${u.isApproved ? '✅' : '❌'}</td>
+        <td class="td">${fmtDate(u.lastLoginAt)}</td>
+        <td class="td">${location}</td>
+        <td class="td">${walletShort}</td>
+        <td class="td tpv-cell">…</td>
+        <td class="td">${aiVal}</td>
+        <td class="td">${fmtDate(u.aiSim?.lastUpdated)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  await fillTPV(rows);
+}
+
+async function fillTPV(users){
+  const symbols = new Set();
+  users.forEach(u => Object.keys(u.wallet || {}).forEach(s => symbols.add(s.toLowerCase())));
+  if(!symbols.size) return;
+
+  const ids = Array.from(symbols).map(s => ID_MAP[s] || s);
+  const uniqueIds = Array.from(new Set(ids)).filter(Boolean);
+  if(!uniqueIds.length) return;
+
+  let prices = {};
+  try{
+    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(uniqueIds.join(','))}&vs_currencies=usd`;
+    const res = await fetch(url);
+    prices = await res.json();
+  }catch(e){
+    console.warn('TPV price fetch failed', e);
+    return;
+  }
+
+  users.forEach(u => {
+    const w = u.wallet || {};
+    let tpv = 0;
+    for(const [sym, amt] of Object.entries(w)){
+      const id = ID_MAP[sym.toLowerCase()] || sym.toLowerCase();
+      const p = prices[id]?.usd || 0;
+      tpv += (+amt) * (+p);
+    }
+    const cell = document.querySelector(`tr[data-user-id="${u._id}"] .tpv-cell`);
+    if(cell) cell.textContent = fmtMoney(tpv);
+  });
+}
+
+/* ======================
+   Skeletons & Errors
+====================== */
+function skeletonRows(tbodySel, rows=3, cols=6){
+  const tb = $(tbodySel);
+  tb.innerHTML = Array.from({length:rows}).map(()=>`
+    <tr class="row">
+      ${Array.from({length:cols}).map(()=>`<td class="td"><div class="skeleton h-5 w-full"></div></td>`).join('')}
+    </tr>
+  `).join('');
+}
+function setErrorRow(tbodySel, cols, msg){
+  $(tbodySel).innerHTML = `<tr><td class="td text-center text-red-400" colspan="${cols}">❌ ${msg}</td></tr>`;
+}
+
+/* ======================
+   CSV Export (Overview)
+====================== */
+function exportOverviewCSV(){
+  if(!_overviewCache.length){ showToast('Nothing to export','err'); return; }
+  const header = ['Name','Email','Agent','Approved','Last Login','City','Country','Wallet','TPV(USD)','AI Value','AI Updated'];
+  const lines = [_overviewCache.map(u => {
+    const w = u.wallet || {};
+    const walletShort = Object.keys(w).length
+      ? Object.entries(w).map(([k,v]) => `${k.toUpperCase()}:${(+v).toFixed(6)}`).join(' | ')
+      : '';
+    const aiVal = u.aiSim?.simulatedValue != null ? (+u.aiSim.simulatedValue).toFixed(2) : '';
+    return [
+      u.name || '',
+      u.email || '',
+      u.agent || '',
+      u.isApproved ? 'Yes' : 'No',
+      u.lastLoginAt ? new Date(u.lastLoginAt).toISOString() : '',
+      u.lastLoginCity || '',
+      u.lastLoginCountry || '',
+      walletShort,
+      '', // TPV calculated client-side (we won’t recompute here)
+      aiVal,
+      u.aiSim?.lastUpdated ? new Date(u.aiSim.lastUpdated).toISOString() : ''
+    ];
+  })];
+  // Build CSV
+  const rows = [header].concat(lines[0]);
+  const csv = rows.map(r => r.map(x => `"${String(x).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'accounts_overview.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showToast('CSV exported','ok');
+}
+
+/* ======================
+   Auto Refresh
+====================== */
+let _poll = null;
+function startAutoRefresh(){
+  clearInterval(_poll);
+  _poll = setInterval(()=>{ refreshAll(); }, 30000);
+}
+function stopAutoRefresh(){ clearInterval(_poll); _poll = null; }
+function refreshAll(){ loadUsers(); fetchRequests(); fetchSellRequests(); loadAccountsOverview(); }
+
+/* ======================
+   Wire up UI
+====================== */
+document.addEventListener('DOMContentLoaded', () => {
+  // Initial loads
+  refreshAll();
+
+  // Controls
+  $('#refreshAllBtn')?.addEventListener('click', refreshAll);
+  $('#refreshUsersBtn')?.addEventListener('click', loadUsers);
+  $('#refreshBuyBtn')?.addEventListener('click', fetchRequests);
+  $('#refreshSellBtn')?.addEventListener('click', fetchSellRequests);
+  $('#refreshOverviewBtn')?.addEventListener('click', loadAccountsOverview);
+  $('#exportCsvBtn')?.addEventListener('click', exportOverviewCSV);
+
+  // Filters
+  $('#userSearch')?.addEventListener('input', debounce(applyUserFilters, 150));
+  $('#userFilter')?.addEventListener('change', applyUserFilters);
+
+  // Auto-refresh
+  const tgl = $('#autoRefreshToggle');
+  const saved = localStorage.getItem('admin_auto_refresh') === '1';
+  tgl.checked = saved;
+  if(saved) startAutoRefresh();
+  tgl.addEventListener('change', (e)=>{
+    if(e.target.checked){ localStorage.setItem('admin_auto_refresh','1'); startAutoRefresh(); }
+    else{ localStorage.removeItem('admin_auto_refresh'); stopAutoRefresh(); }
+  });
+});
+
+// simple debounce
+function debounce(fn, ms=200){
+  let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); };
+}
 </script>
-
-
-
 
 </body>
 </html>
