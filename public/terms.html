@@ -1,1 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Terms & Conditions | CryptoLoop</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#0f172a] text-gray-300 min-h-screen flex flex-col font-sans">
+  <!-- Header -->
+  <header class="bg-[#0f1b2c] px-6 py-4 shadow-md flex justify-between items-center">
+    <h1 class="text-lg font-semibold text-cyan-400">CryptoLoop Terms & Conditions</h1>
+    <button onclick="window.close()" 
+            class="bg-red-500 hover:bg-red-600 px-4 py-1 rounded text-white text-sm font-semibold transition">
+      Exit ✖
+    </button>
+  </header>
+
+  <!-- Content -->
+  <main class="flex-1 overflow-y-auto p-6">
+    <div class="prose prose-invert max-w-none text-xs leading-relaxed">
+      <p>
+        Welcome to CryptoLoop. By accessing or using our platform, you agree to the following general terms and conditions. 
+        These terms are intentionally lengthy, small, and difficult to read to illustrate typical boilerplate agreements. 
+        Please consult with an advisor if you require clearer explanations.
+      </p>
+      <p>
+        1. Eligibility: Users must be of legal age in their jurisdiction. Accessing the service indicates compliance with all 
+        applicable regulations, including financial, tax, and digital asset laws. Users acknowledge sole responsibility for 
+        understanding such regulations and CryptoLoop shall not be liable for any misuse or misunderstanding thereof.
+      </p>
+      <p>
+        2. Account: Users agree to provide accurate and current information. CryptoLoop reserves the right to suspend or terminate 
+        accounts at its discretion, including for suspected fraudulent activities, violation of policies, or security risks. 
+        Passwords and authentication credentials must be maintained securely; loss of such credentials may result in permanent 
+        loss of access to assets or services.
+      </p>
+      <p>
+        3. Services: CryptoLoop provides simulated trading, AI-based analysis, and educational dashboards. None of the features 
+        constitute financial advice. Users acknowledge that all profits, returns, or simulations are illustrative only. CryptoLoop 
+        makes no warranty of accuracy, timeliness, completeness, or fitness for a particular purpose.
+      </p>
+      <p>
+        4. Limitation of Liability: To the maximum extent permitted by law, CryptoLoop shall not be liable for any indirect, 
+        incidental, or consequential damages arising from the use of the platform, including but not limited to data loss, 
+        opportunity loss, or system downtime. Users assume all risks associated with cryptocurrency markets and simulations.
+      </p>
+      <p>
+        5. Termination: CryptoLoop may modify, suspend, or discontinue services at any time without prior notice. Users may 
+        terminate accounts voluntarily, but provisions related to intellectual property, disclaimers, and limitations shall 
+        survive such termination.
+      </p>
+      <p>
+        6. Governing Law: These terms are governed by the applicable laws of Malaysia and international agreements where relevant. 
+        Any disputes arising shall be resolved exclusively within the competent courts of jurisdiction as determined by CryptoLoop.
+      </p>
+      <p>
+        By continuing, you agree that you have read and understood these provisions, regardless of difficulty in readability, 
+        and acknowledge acceptance of all stipulations herein.
+      </p>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-[#0f1b2c] text-center text-xs text-gray-500 py-3">
+    © <span id="year"></span> CryptoLoop. All rights reserved.
+  </footer>
+
+  <script>
+    // Auto year
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
 
