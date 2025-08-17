@@ -140,6 +140,15 @@
       </button>
     </div>
 
+
+    <!-- Currency Toggle -->
+<div class="flex items-center justify-end mb-3">
+  <div class="inline-flex bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+    <button id="cur-usd" type="button" class="px-3 py-1.5 text-sm hover:bg-gray-700">USD $</button>
+    <button id="cur-myr" type="button" class="px-3 py-1.5 text-sm hover:bg-gray-700 border-l border-gray-700">MYR RM</button>
+  </div>
+</div>
+
     <!-- Market Table -->
     <div class="overflow-x-auto rounded-lg border border-gray-700">
       <table id="market-table" class="min-w-full text-sm text-left bg-gray-700 text-white">
@@ -147,7 +156,7 @@
           <tr>
             <th class="p-2 border">Name</th>
             <th class="p-2 border">Symbol</th>
-            <th class="p-2 border">Price (USD)</th>
+            <th class="p-2 border text-right">Price (<span id="price-header-currency">USD</span>)</th>
             <th class="p-2 border">24h Change (%)</th>
             <th class="p-2 border">Trend</th>
             <th class="p-2 border">Holdings</th>
