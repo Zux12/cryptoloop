@@ -102,9 +102,14 @@ function formatCurrency(amount) {
 function updateCurrencySelectUI() {
   var sel = document.getElementById('currency-select');
   var hdr = document.getElementById('price-header-currency');
+  var wph = document.getElementById('wallet-price-currency');
+  var wvh = document.getElementById('wallet-value-currency');
   if (sel) sel.value = CURRENCY;
   if (hdr) hdr.textContent = CURRENCY;
+  if (wph) wph.textContent = CURRENCY;
+  if (wvh) wvh.textContent = CURRENCY;
 }
+
 
 async function setCurrency(cur) {
   CURRENCY = cur;
@@ -313,21 +318,22 @@ async function loadMarketData() {
 async function loadWallet() {
   const token = localStorage.getItem('token');
   const table = document.querySelector('#wallet-table tbody');
+  if (!table) return;
 
   try {
     const res1 = await fetch('/api/user/wallet', {
       headers: { Authorization: `Bearer ${token}` }
     });
-
     const data = await res1.json();
     const wallet = data.wallet || {};
-    console.log("👜 Loaded wallet from backend:", wallet);
-    localStorage.setItem('wallet', JSON.stringify(wallet)); // ✅ Add this line here
-    console.log("📦 Wallet saved to localStorage:", localStorage.getItem('wallet'));
+    localStorage.setItem('wallet', JSON.stringify(wallet));
 
     const symbols = Object.keys(wallet);
     if (!symbols.length) {
       table.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400">No holdings</td></tr>';
+      window.totalPortfolioValue = 0;
+      const tv = document.getElementById('total-value');
+      if (tv) tv.textContent = 'Total Portfolio Value: ' + formatCurrency(convertFromUSD(0));
       return;
     }
 
@@ -344,60 +350,82 @@ async function loadWallet() {
       trc: 'tron'
     };
 
-    const ids = symbols.map(sym => symbolToId[sym]).filter(Boolean);
-    console.log("🪙 CoinGecko IDs:", ids);
-
-    let prices = [];
-    try {
-      const res2 = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids.join(',')}`);
-      const contentType = res2.headers.get("content-type") || "";
-
-      if (!res2.ok || !contentType.includes("application/json")) {
-        throw new Error(`❌ CoinGecko error: status ${res2.status}`);
-      }
-
-      prices = await res2.json();
-      if (!prices.length) throw new Error("🛑 No prices returned from CoinGecko");
-
-    } catch (err) {
-      console.error("❌ Error fetching CoinGecko prices:", err.message);
-      if (table) {
-        table.innerHTML = `<tr><td colspan="6" class="text-center text-red-500">${err.message}</td></tr>`;
-      }
+    // Map wallet symbols (case-insensitive) -> CoinGecko IDs
+    const ids = symbols.map(sym => symbolToId[(sym || '').toLowerCase()]).filter(Boolean);
+    if (!ids.length) {
+      table.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400">No supported coins</td></tr>';
       return;
     }
 
-    let totalValue = 0;
-    const rows = prices.map(coin => {
-      const symbol = coin.symbol.toLowerCase();
-      const amount = wallet[symbol] || 0;
-      const value = amount * coin.current_price;
-      totalValue += value;
-      return `
-        <tr>
-          <td class="p-2 border">${coin.name}</td>
-          <td class="p-2 border">${symbol.toUpperCase()}</td>
-          <td class="p-2 border">${amount}</td>
-          <td class="p-2 border">$${coin.current_price}</td>
-          <td class="p-2 border">$${value.toFixed(2)}</td>
-          <td class="p-2 border">${((value / totalValue) * 100).toFixed(2)}%</td>
-        </tr>
-      `;
+    // Fetch prices in USD
+    let prices = [];
+    try {
+      const res2 = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=' + ids.join(','));
+      const contentType = res2.headers.get('content-type') || '';
+      if (!res2.ok || !contentType.includes('application/json')) {
+        throw new Error('❌ CoinGecko error: status ' + res2.status);
+      }
+      prices = await res2.json();
+      if (!prices.length) throw new Error('🛑 No prices returned from CoinGecko');
+    } catch (err) {
+      console.error('❌ Error fetching CoinGecko prices:', err.message);
+      table.innerHTML = '<tr><td colspan="6" class="text-center text-red-500">' + err.message + '</td></tr>';
+      return;
+    }
+
+    // Pass 1: compute TOTAL in USD first (so % is correct)
+    let totalUSD = 0;
+    prices.forEach(function (coin) {
+      const sym = (coin.symbol || '').toLowerCase();
+      const amount = Number(wallet[sym] || 0);
+      const priceUSD = Number(coin.current_price || 0);
+      totalUSD += amount * priceUSD;
     });
 
-    window.totalPortfolioValue = totalValue;
-    document.getElementById('total-value').textContent = `Total Portfolio Value: $${totalValue.toFixed(2)}`;
-    if (table) {
-      table.innerHTML = rows.join('');
-    }
+    // Pass 2: build rows using the final totalUSD
+    const rows = prices.map(function (coin) {
+      const symbol = (coin.symbol || '').toLowerCase();
+      const amount = Number(wallet[symbol] || 0);
+      const priceUSD = Number(coin.current_price || 0);
+      const valueUSD = amount * priceUSD;
+      const pct = totalUSD > 0 ? (valueUSD / totalUSD) * 100 : 0;
+
+      return (
+        '<tr>' +
+          '<td class="p-2 border">' + (coin.name || '') + '</td>' +
+          '<td class="p-2 border">' + symbol.toUpperCase() + '</td>' +
+          '<td class="p-2 border">' + amount + '</td>' +
+
+          // Price (store USD, display converted)
+          '<td class="p-2 border text-right" data-price-usd="' + priceUSD + '">' +
+            formatCurrency(convertFromUSD(priceUSD)) +
+          '</td>' +
+
+          // Value (store USD, display converted)
+          '<td class="p-2 border text-right" data-value-usd="' + valueUSD + '">' +
+            formatCurrency(convertFromUSD(valueUSD)) +
+          '</td>' +
+
+          '<td class="p-2 border">' + pct.toFixed(2) + '%</td>' +
+        '</tr>'
+      );
+    });
+
+    // Update TPV (store USD baseline; display selected currency)
+    window.totalPortfolioValue = totalUSD;
+    const tv = document.getElementById('total-value');
+    if (tv) tv.textContent = 'Total Portfolio Value: ' + formatCurrency(convertFromUSD(totalUSD));
+
+    // Render + apply currency to wallet cells
+    table.innerHTML = rows.join('');
+    applyCurrencyToWalletTable();
 
   } catch (err) {
-    console.error("❌ Error in loadWallet():", err.message);
-    if (table) {
-      table.innerHTML = `<tr><td colspan="6" class="text-center text-red-500">Error loading wallet</td></tr>`;
-    }
+    console.error('❌ Error in loadWallet():', err.message);
+    table.innerHTML = '<tr><td colspan="6" class="text-center text-red-500">Error loading wallet</td></tr>';
   }
 }
+
 
 
 // TODO: Insert startAiSimulation() and simulateTrade() with clean logic later...
@@ -1440,6 +1468,26 @@ function applyCurrencyToMarketTable() {
     td.classList.add('text-right');
   });
 }
+
+// Convert Wallet table amounts based on data-* USD attributes
+function applyCurrencyToWalletTable() {
+  var priceCells = document.querySelectorAll('#wallet-table tbody td[data-price-usd]');
+  for (var i = 0; i < priceCells.length; i++) {
+    var td = priceCells[i];
+    var usd = Number(td.getAttribute('data-price-usd') || '0');
+    td.textContent = formatCurrency(convertFromUSD(usd));
+    td.classList.add('text-right');
+  }
+  var valueCells = document.querySelectorAll('#wallet-table tbody td[data-value-usd]');
+  for (var j = 0; j < valueCells.length; j++) {
+    var td2 = valueCells[j];
+    var usd2 = Number(td2.getAttribute('data-value-usd') || '0');
+    td2.textContent = formatCurrency(convertFromUSD(usd2));
+    td2.classList.add('text-right');
+  }
+}
+
+
 
 // ===== Filter helpers =====
 function debounce(fn, wait = 200) {
