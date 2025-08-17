@@ -107,18 +107,25 @@ function updateCurrencySelectUI() {
 async function setCurrency(cur) {
   CURRENCY = cur;
   localStorage.setItem('currency_pref', cur);
+
+  // Sync dropdown + headers
   updateCurrencySelectUI();
-  if (!FX_RATES[cur]) { await getFxRates(); }
-  // Update Market prices
+
+  // Ensure we actually have rates (don’t rely on conditional)
+  await getFxRates();
+
+  // Re-render Market + Wallet amounts immediately
   if (typeof applyCurrencyToMarketTable === 'function') applyCurrencyToMarketTable();
-  // Update Wallet prices
   if (typeof applyCurrencyToWalletTable === 'function') applyCurrencyToWalletTable();
-  // Update TPV label
+
+  // Update Total Portfolio Value in the selected currency (wallet baseline remains USD)
   var tv = document.getElementById('total-value');
   if (tv && typeof window.totalPortfolioValue === 'number') {
-    tv.textContent = 'Total Portfolio Value: ' + formatCurrency(convertFromUSD(window.totalPortfolioValue));
+    tv.textContent = 'Total Portfolio Value: ' +
+      formatCurrency(convertFromUSD(window.totalPortfolioValue));
   }
 }
+
 
 
 
@@ -1481,7 +1488,7 @@ function applyCurrencyToMarketTable() {
   });
 }
 
-// Convert Wallet table amounts based on data-* USD attributes
+// Convert Wallet table amounts based on stored USD values
 function applyCurrencyToWalletTable() {
   var priceCells = document.querySelectorAll('#wallet-table tbody td[data-price-usd]');
   for (var i = 0; i < priceCells.length; i++) {
@@ -1498,6 +1505,7 @@ function applyCurrencyToWalletTable() {
     td2.classList.add('text-right');
   }
 }
+
 
 
 
@@ -1527,13 +1535,25 @@ window.onload = function () {
   loadWallet();
   loadCryptoNews();
 
-// Wire currency dropdown
-var curSel = document.getElementById('currency-select');
-if (curSel) {
-  curSel.addEventListener('change', function () { setCurrency(this.value); });
-}
-updateCurrencySelectUI();
+  // ----- Currency dropdown (Market tab) -----
+  var curSel = document.getElementById('currency-select');
+  if (curSel) {
+    curSel.addEventListener('change', function () { setCurrency(this.value); });
+  }
+  updateCurrencySelectUI();
 
+  // Re-apply conversions once FX rates are loaded (handles first-load race)
+  getFxRates().then(function () {
+    if (typeof applyCurrencyToMarketTable === 'function') applyCurrencyToMarketTable();
+    if (typeof applyCurrencyToWalletTable === 'function') applyCurrencyToWalletTable();
+
+    // Repaint TPV label in current currency
+    var tv = document.getElementById('total-value');
+    if (tv && typeof window.totalPortfolioValue === 'number') {
+      tv.textContent = 'Total Portfolio Value: ' +
+        formatCurrency(convertFromUSD(window.totalPortfolioValue));
+    }
+  });
 
   // ----- Filter input -----
   var marketFilter = document.getElementById('market-filter');
@@ -1575,4 +1595,5 @@ updateCurrencySelectUI();
   if (buySymEl) buySymEl.addEventListener('input', checkBuyFormValidity);
   if (buyAmtEl) buyAmtEl.addEventListener('input', checkBuyFormValidity);
 };
+
 
