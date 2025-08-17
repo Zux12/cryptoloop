@@ -10,15 +10,73 @@
   <script src="https://cdn.jsdelivr.net/npm/luxon"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
-  <style>
-    .tab { display: none; }
-    .tab.active { display: block; }
-    .nav-tab-btn.active {
-  outline: 2px solid #22d3ee; /* cyan ring */
-  outline-offset: 2px;
-}
+<style>
+  .tab { display: none; }
+  .tab.active { display: block; }
+  .nav-tab-btn.active { outline: 2px solid #22d3ee; outline-offset: 2px; }
 
-  </style>
+  /* News cards */
+  .news-card { 
+    display: block;
+    background: rgba(31, 41, 55, 0.7);    /* bg-gray-800/70 */
+    border: 1px solid #374151;            /* border-gray-700 */
+    border-radius: 0.75rem;               /* rounded-xl */
+    padding: 0.875rem;                    /* p-3.5 */
+    transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+  }
+  .news-card:hover { 
+    background: rgba(55, 65, 81, 0.8);    /* hover:bg-gray-700 */
+    border-color: #4b5563;                /* border-gray-600 */
+    transform: translateY(-1px);
+  }
+  .news-title {
+    font-weight: 700;                      /* font-bold */
+    font-size: 1rem;                       /* text-base */
+    line-height: 1.4;
+    color: #e5e7eb;                        /* text-gray-200 */
+    margin: 0 0 0.375rem 0;
+  }
+  .news-excerpt {
+    font-size: 0.875rem;                   /* text-sm */
+    color: #9ca3af;                        /* text-gray-400 */
+  }
+  .news-meta {
+    display: flex; gap: 0.5rem; align-items: center; 
+    font-size: 0.75rem;                    /* text-xs */
+    color: #9ca3af;                        /* text-gray-400 */
+    margin-top: 0.5rem;
+  }
+  .news-source {
+    background: #111827;                   /* bg-gray-900 */
+    border: 1px solid #374151;             /* border-gray-700 */
+    color: #d1d5db;                        /* text-gray-300 */
+    padding: 0.125rem 0.5rem;              /* px-2 py-0.5 */
+    border-radius: 999px;                  /* rounded-full */
+  }
+  .news-time { white-space: nowrap; }
+  .news-ext {
+    margin-left: auto; opacity: 0.7;
+  }
+
+  /* Multi-line truncation */
+  .line-clamp-1 {
+    display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .line-clamp-2 {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  /* Grid on larger screens */
+  @media (min-width: 1024px) {
+    #crypto-news { 
+      display: grid; 
+      grid-template-columns: repeat(2, minmax(0, 1fr)); 
+      gap: 0.75rem; 
+    }
+    #crypto-news > li { margin: 0 !important; } /* remove vertical spacing when grid applies */
+  }
+</style>
+
 </head>
 <body class="bg-gray-900 text-white min-h-screen px-4">
 
@@ -102,10 +160,21 @@
     <!-- 📰 Tailwind-Styled Crypto News -->
 <h3 class="text-xl font-semibold mt-10 mb-4 text-white">📰 Crypto News</h3>
 <ul id="crypto-news" class="space-y-3">
-  <li class="bg-gray-800/60 border border-gray-700 rounded-lg p-4 text-gray-400 italic shadow-sm">
-    Loading news...
+  <li class="news-card">
+    <div class="news-title line-clamp-1">Loading news…</div>
+    <div class="news-excerpt line-clamp-2">Please wait while we fetch today’s headlines.</div>
+    <div class="news-meta">
+      <span class="news-source">Loading</span>
+      <span>•</span>
+      <span class="news-time">Now</span>
+      <svg class="news-ext" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M14 3h7v7M21 3l-9 9" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M21 14v5a2 2 0 0 1-2 2h-5" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
   </li>
 </ul>
+
 
 
   </div>
@@ -276,6 +345,76 @@
       </div>
 
 
+<script>
+function renderNewsCard(item) {
+  const ul = document.getElementById('crypto-news');
+  if (!ul) return;
+
+  // Remove the loading LI if it's still there
+  const first = ul.firstElementChild;
+  if (first && first.textContent.includes('Loading')) ul.innerHTML = '';
+
+  const li = document.createElement('li');
+  const wrapper = item.url ? document.createElement('a') : document.createElement('div');
+  if (item.url) {
+    wrapper.href = item.url;
+    wrapper.target = '_blank';
+    wrapper.rel = 'noopener';
+    wrapper.setAttribute('aria-label', item.title || 'Open article');
+  }
+  wrapper.className = 'news-card';
+
+  const title = document.createElement('div');
+  title.className = 'news-title line-clamp-1';
+  title.textContent = item.title || 'Untitled';
+
+  const excerpt = document.createElement('div');
+  excerpt.className = 'news-excerpt line-clamp-2';
+  excerpt.textContent = item.excerpt || '';
+
+  const meta = document.createElement('div');
+  meta.className = 'news-meta';
+
+  const source = document.createElement('span');
+  source.className = 'news-source';
+  source.textContent = item.source || 'Source';
+
+  const dot = document.createElement('span');
+  dot.textContent = '•';
+
+  const time = document.createElement('span');
+  time.className = 'news-time';
+  time.textContent = item.time || '';
+
+  const ext = document.createElement('span');
+  ext.className = 'news-ext';
+  ext.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 3h7v7M21 3l-9 9" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 14v5a2 2 0 0 1-2 2h-5" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round"/></svg>';
+
+  meta.append(source, dot, time, ext);
+  wrapper.append(title);
+  if (item.excerpt) wrapper.append(excerpt);
+  wrapper.append(meta);
+
+  li.appendChild(wrapper);
+  ul.appendChild(li);
+}
+
+// Small helper to show "2h ago", "Yesterday", etc.
+function relativeTime(iso) {
+  try {
+    const d = new Date(iso);
+    const diff = (Date.now() - d.getTime()) / 1000; // seconds
+    if (!isFinite(diff)) return '';
+    if (diff < 60) return `${Math.floor(diff)}s ago`;
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+    if (diff < 172800) return `Yesterday`;
+    return d.toLocaleDateString();
+  } catch { return ''; }
+}
+</script>
+
+  
 
   <!-- Main JS -->
   <script src="main.js"></script>
