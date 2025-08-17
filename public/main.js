@@ -229,6 +229,15 @@ async function loadUserName() {
   }
 }
 
+// ===== Color-coded % with arrows (used by Market table) =====
+function renderChangePct(pct) {
+  var v = Number(pct);
+  if (!isFinite(v)) return '<span class="text-gray-300">—</span>';
+  var cls   = v > 0 ? 'text-green-400' : (v < 0 ? 'text-red-400' : 'text-gray-300');
+  var arrow = v > 0 ? '▲' : (v < 0 ? '▼' : '◆');
+  return '<span class="' + cls + '">' + arrow + ' ' + v.toFixed(2) + '%</span>';
+}
+
 
 // Load Market Data
 async function loadMarketData() {
