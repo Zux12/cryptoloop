@@ -47,33 +47,28 @@ async function getFxRates() {
     FX_RATES.USD = FX_RATES.USD || 1;
     return FX_RATES;
   }
-
   try {
     var symbols = getFxRatesNeededList().filter(function(s){ return s !== 'USD'; }).join(',');
     var r = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=' + symbols);
     var j = await r.json();
     FX_RATES = (j && j.rates) ? j.rates : {};
-    FX_RATES.USD = 1; // base
+    FX_RATES.USD = 1;
     localStorage.setItem(cacheKey, JSON.stringify(FX_RATES));
     localStorage.setItem(timeKey, String(now));
     return FX_RATES;
   } catch (e) {
-    // Fallback to last cached or default
     try { FX_RATES = JSON.parse(localStorage.getItem(cacheKey) || '{}'); } catch(_){}
     FX_RATES.USD = FX_RATES.USD || 1;
     return FX_RATES;
   }
 }
-// Warm the cache on load
+// warm the cache
 getFxRates();
 
-
-// ===== Conversion + formatting =====
 function convertFromUSD(amountUsd) {
   var rate = (CURRENCY === 'USD') ? 1 : (FX_RATES[CURRENCY] || 1);
   return Number(amountUsd) * rate;
 }
-
 function currencySymbol(code) {
   switch (code) {
     case 'USD': return '$';
@@ -92,7 +87,6 @@ function currencySymbol(code) {
     default: return code + ' ';
   }
 }
-
 function formatCurrency(amount) {
   var sym = currencySymbol(CURRENCY);
   var opts = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
@@ -110,14 +104,22 @@ function updateCurrencySelectUI() {
   if (wvh) wvh.textContent = CURRENCY;
 }
 
-
 async function setCurrency(cur) {
   CURRENCY = cur;
   localStorage.setItem('currency_pref', cur);
   updateCurrencySelectUI();
   if (!FX_RATES[cur]) { await getFxRates(); }
-  applyCurrencyToMarketTable(); // update prices instantly
+  // Update Market prices
+  if (typeof applyCurrencyToMarketTable === 'function') applyCurrencyToMarketTable();
+  // Update Wallet prices
+  if (typeof applyCurrencyToWalletTable === 'function') applyCurrencyToWalletTable();
+  // Update TPV label
+  var tv = document.getElementById('total-value');
+  if (tv && typeof window.totalPortfolioValue === 'number') {
+    tv.textContent = 'Total Portfolio Value: ' + formatCurrency(convertFromUSD(window.totalPortfolioValue));
+  }
 }
+
 
 
 
@@ -130,28 +132,38 @@ function renderChangePct(pct) {
   return `<span class="${cls}">${arrow} ${v.toFixed(2)}%</span>`;
 }
 
-// ===== Toggle wiring (buttons + header text) =====
-function updateCurrencyToggleUI() {
-  const usdBtn = document.getElementById('cur-usd');
-  const myrBtn = document.getElementById('cur-myr');
-  const priceHdr = document.getElementById('price-header-currency');
-
-  if (usdBtn && myrBtn) {
-    usdBtn.classList.toggle('ring-2', CURRENCY === 'USD');
-    usdBtn.classList.toggle('ring-cyan-400', CURRENCY === 'USD');
-    myrBtn.classList.toggle('ring-2', CURRENCY === 'MYR');
-    myrBtn.classList.toggle('ring-cyan-400', CURRENCY === 'MYR');
-  }
-  if (priceHdr) priceHdr.textContent = CURRENCY;
+// Dropdown currency UI + setter
+function updateCurrencySelectUI() {
+  var sel = document.getElementById('currency-select');
+  var hdr = document.getElementById('price-header-currency');
+  var wph = document.getElementById('wallet-price-currency'); // optional
+  var wvh = document.getElementById('wallet-value-currency'); // optional
+  if (sel) sel.value = CURRENCY;
+  if (hdr) hdr.textContent = CURRENCY;
+  if (wph) wph.textContent = CURRENCY;
+  if (wvh) wvh.textContent = CURRENCY;
 }
 
 async function setCurrency(cur) {
   CURRENCY = cur;
   localStorage.setItem('currency_pref', cur);
-  updateCurrencyToggleUI();
-  if (cur === 'MYR' && !USD_MYR_RATE) USD_MYR_RATE = await getUsdMyrRate();
-  applyCurrencyToMarketTable(); // update table prices immediately
+  updateCurrencySelectUI();
+
+  // Ensure we have rates for this currency
+  if (!FX_RATES[cur]) { await getFxRates(); }
+
+  // Re-render displayed amounts immediately
+  if (typeof applyCurrencyToMarketTable === 'function') applyCurrencyToMarketTable();
+  if (typeof applyCurrencyToWalletTable === 'function') applyCurrencyToWalletTable();
+
+  // Update Total Portfolio Value label
+  var tv = document.getElementById('total-value');
+  if (tv && typeof window.totalPortfolioValue === 'number') {
+    tv.textContent = 'Total Portfolio Value: ' +
+      formatCurrency(convertFromUSD(window.totalPortfolioValue));
+  }
 }
+
 
 
 
