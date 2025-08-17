@@ -200,44 +200,42 @@ async function loadMarketData() {
 
   try {
     const ids = watchlist.join(',');
-    const res = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}`);
+    const res = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=' + ids);
     const prices = await res.json();
 
-    const rows = prices.map(coin => {
+    const rows = prices.map(function (coin) {
       const symbol = (coin.symbol || '').toLowerCase();
       const holding = Number(localWallet[symbol] || 0);
-      const holdingText = holding > 0 ? `${holding} ${(coin.symbol || '').toUpperCase()}` : '–';
+      const holdingText = holding > 0 ? (holding + ' ' + (coin.symbol || '').toUpperCase()) : '–';
 
       const priceUsd  = Number(coin.current_price || 0);
       const change24h = Number(coin.price_change_percentage_24h || 0);
-      const rank      = (coin.market_cap_rank ?? '-');
+      const rank = (coin.market_cap_rank !== undefined && coin.market_cap_rank !== null) ? coin.market_cap_rank : '-';
       const safeNameEnc = encodeURIComponent(coin.name || '');
 
-      return `
-        <tr data-name="${(coin.name || '').toLowerCase()}" data-symbol="${symbol}">
-          <td class="p-2 border">
-            <div class="flex items-center gap-2">
-              <img src="${coin.image}" alt="${(coin.symbol || '').toUpperCase()} logo" class="w-5 h-5 rounded-full" onerror="this.style.display='none'">
-              <a href="javascript:void(0)" class="text-blue-400 hover:underline"
-                 onclick="setChartCoin('${coin.id}', decodeURIComponent('${safeNameEnc}'))">
-                ${coin.name}
-              </a>
-              <span class="text-xs bg-gray-900 border border-gray-700 text-gray-300 rounded-full px-1.5 py-0.5">#${rank}</span>
-            </div>
-          </td>
-          <td class="p-2 border">${(coin.symbol || '').toUpperCase()}</td>
-
-          <td class="p-2 border text-right" data-price-usd="${priceUsd}">
-            ${formatCurrency(convertFromUSD(priceUsd))}
-          </td>
-
-          <td class="p-2 border text-right">
-            ${renderChangePct(change24h)}
-          </td>
-
-          <td class="p-2 border">${change24h >= 0 ? '📈Up Trending' : '📉Down Trending'}</td>
-          <td class="p-2 border">${holdingText}</td>
-        </tr>`;
+      return (
+        '<tr data-name="' + ((coin.name || '').toLowerCase()) + '" data-symbol="' + symbol + '">' +
+          '<td class="p-2 border">' +
+            '<div class="flex items-center gap-2">' +
+              '<img src="' + coin.image + '" alt="' + ((coin.symbol || '').toUpperCase()) + ' logo" class="w-5 h-5 rounded-full" onerror="this.style.display=\'none\'">' +
+              '<a href="javascript:void(0)" class="text-blue-400 hover:underline" ' +
+                 'onclick="setChartCoin(\'' + coin.id + '\', decodeURIComponent(\'' + safeNameEnc + '\'))">' +
+                (coin.name || '') +
+              '</a>' +
+              '<span class="text-xs bg-gray-900 border border-gray-700 text-gray-300 rounded-full px-1.5 py-0.5">#' + rank + '</span>' +
+            '</div>' +
+          '</td>' +
+          '<td class="p-2 border">' + ((coin.symbol || '').toUpperCase()) + '</td>' +
+          '<td class="p-2 border text-right" data-price-usd="' + priceUsd + '">' +
+            formatCurrency(convertFromUSD(priceUsd)) +
+          '</td>' +
+          '<td class="p-2 border text-right">' +
+            renderChangePct(change24h) +
+          '</td>' +
+          '<td class="p-2 border">' + (change24h >= 0 ? '📈Up Trending' : '📉Down Trending') + '</td>' +
+          '<td class="p-2 border">' + holdingText + '</td>' +
+        '</tr>'
+      );
     }).join('');
 
     table.innerHTML = rows;
@@ -245,14 +243,15 @@ async function loadMarketData() {
     // Respect current currency
     applyCurrencyToMarketTable();
 
-    // Re-apply active filter if any
-    const q = document.getElementById('market-filter')?.value?.trim().toLowerCase();
+    // Re-apply active filter if any (no optional chaining)
+    var filterEl = document.getElementById('market-filter');
+    var q = filterEl ? (filterEl.value || '').trim().toLowerCase() : '';
     if (q) filterMarketRows(q);
 
     // Update "Last updated"
-    const updatedEl = document.getElementById('market-updated');
+    var updatedEl = document.getElementById('market-updated');
     if (updatedEl) {
-      updatedEl.textContent = `Last updated ${new Date().toLocaleTimeString()}`;
+      updatedEl.textContent = 'Last updated ' + new Date().toLocaleTimeString();
     }
   } catch (err) {
     console.error('Error loading market data:', err);
@@ -260,20 +259,6 @@ async function loadMarketData() {
   }
 }
 
-
-
-
-// If filter is currently typed, re-apply it after rerender
-const _q = document.getElementById('market-filter')?.value || '';
-if (_q) filterMarketRows(_q.trim().toLowerCase());
-
-
-
-  } catch (err) {
-    console.error('Error loading market data:', err);
-    table.innerHTML = '<tr><td colspan="6" class="text-center text-red-500">Failed to load market data</td></tr>';
-  }
-}
 
 
 // Load Wallet
