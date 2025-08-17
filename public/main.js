@@ -31,6 +31,10 @@ let aiThoughtsBox;
 var CURRENCY = (localStorage.getItem('currency_pref') || 'USD').toUpperCase();
 var FX_RATES = { USD: 1 }; // Always USD base
 
+// Cache keys
+var FX_CACHE_KEY = 'fx_rates_usd_base';
+var FX_TIME_KEY  = 'fx_rates_fetchedAt';
+
 function getFxRatesNeededList() {
   return ['USD','MYR','EUR','GBP','SGD','JPY','AUD','CAD','INR','IDR','THB','CNY','KRW'];
 }
@@ -39,26 +43,26 @@ function getFxRatesNeededList() {
 function normalizeFx(obj) {
   var out = { USD: 1 };
   if (obj && typeof obj === 'object') {
-    Object.keys(obj).forEach(function(k){
-      var key = (k || '').toUpperCase();
-      var v = Number(obj[k]);
+    var keys = Object.keys(obj);
+    for (var i = 0; i < keys.length; i++) {
+      var key = (keys[i] || '').toUpperCase();
+      var v = Number(obj[keys[i]]);
       if (isFinite(v) && v > 0) out[key] = v;
-    });
+    }
   }
   return out;
 }
 
-async function getFxRates() {
-  var cacheKey = 'fx_rates_usd_base';
-  var timeKey  = 'fx_rates_fetchedAt';
+// Fetch FX rates; if force==true, ignore cached freshness
+async function getFxRates(force) {
   var now = Date.now();
-  var cached = localStorage.getItem(cacheKey);
-  var fetchedAt = Number(localStorage.getItem(timeKey) || 0);
+  var cached = localStorage.getItem(FX_CACHE_KEY);
+  var fetchedAt = Number(localStorage.getItem(FX_TIME_KEY) || 0);
 
-  // Use normalized cache if fresh
-  if (cached && (now - fetchedAt) < 24*60*60*1000) {
+  if (!force && cached && (now - fetchedAt) < 24*60*60*1000) {
     try { FX_RATES = normalizeFx(JSON.parse(cached)); } catch(e) { FX_RATES = { USD:1 }; }
-    return FX_RATES;
+    // If cache looks useful (more than USD), use it
+    if (Object.keys(FX_RATES).length > 1) return FX_RATES;
   }
 
   try {
@@ -66,23 +70,35 @@ async function getFxRates() {
     var r = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=' + symbols);
     var j = await r.json();
     var rates = (j && j.rates) ? j.rates : {};
-
     FX_RATES = normalizeFx(rates);
-    localStorage.setItem(cacheKey, JSON.stringify(FX_RATES));
-    localStorage.setItem(timeKey, String(now));
+    if (Object.keys(FX_RATES).length === 1) throw new Error('Empty rates');
+    localStorage.setItem(FX_CACHE_KEY, JSON.stringify(FX_RATES));
+    localStorage.setItem(FX_TIME_KEY, String(now));
     return FX_RATES;
   } catch (e) {
-    // Fallback to cached (normalized) or reasonable static defaults
-    try { FX_RATES = normalizeFx(JSON.parse(localStorage.getItem(cacheKey) || '{}')); }
+    // fallback to cached normalized (if any)
+    try { FX_RATES = normalizeFx(JSON.parse(localStorage.getItem(FX_CACHE_KEY) || '{}')); }
     catch(_){ FX_RATES = { USD:1 }; }
-
-    // Optional static safety net if nothing cached:
+    // last-resort static defaults if still only USD
     if (Object.keys(FX_RATES).length === 1) {
       var FX_FALLBACK = { MYR: 4.6, EUR: 0.92, GBP: 0.78, SGD: 1.35, JPY: 155, AUD: 1.50, CAD: 1.35, INR: 83, IDR: 15500, THB: 34, CNY: 7.2, KRW: 1350 };
       FX_RATES = Object.assign({ USD:1 }, FX_FALLBACK);
     }
     return FX_RATES;
   }
+}
+
+// Ensure we actually have a non-1 rate for the requested code
+async function ensureFxFor(code) {
+  code = (code || 'USD').toUpperCase();
+  await getFxRates(false);
+  if (code !== 'USD' && (!FX_RATES[code] || FX_RATES[code] === 1)) {
+    // clear stale cache and force refetch
+    localStorage.removeItem(FX_CACHE_KEY);
+    localStorage.removeItem(FX_TIME_KEY);
+    await getFxRates(true);
+  }
+  return FX_RATES[code] || 1;
 }
 
 function getRate(code) {
@@ -138,8 +154,8 @@ async function setCurrency(cur) {
   localStorage.setItem('currency_pref', CURRENCY);
   updateCurrencySelectUI();
 
-  // Ensure rates exist (normalized) before repaint
-  await getFxRates();
+  // Ensure a real rate exists for selected currency (force-refetch if needed)
+  await ensureFxFor(CURRENCY);
 
   // Re-render Market + Wallet amounts immediately
   if (typeof applyCurrencyToMarketTable === 'function') applyCurrencyToMarketTable();
