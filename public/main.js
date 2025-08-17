@@ -186,11 +186,11 @@ async function loadUserName() {
   }
 }
 
+
 // Load Market Data
 async function loadMarketData() {
   const table = document.querySelector('#market-table tbody');
   const localWallet = JSON.parse(localStorage.getItem('wallet')) || {};
-  console.log("🔍 Retrieved wallet from localStorage in Market tab:", localWallet);
   if (!table) return;
 
   if (!watchlist.length) {
@@ -203,60 +203,63 @@ async function loadMarketData() {
     const res = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}`);
     const prices = await res.json();
 
-    table.innerHTML = prices.map(coin => {
-      const symbol = coin.symbol.toLowerCase();
-      const holding = localWallet[symbol] || 0;
-      const holdingText = holding > 0 ? `${holding} ${coin.symbol.toUpperCase()}` : '–';
+    const rows = prices.map(coin => {
+      const symbol = (coin.symbol || '').toLowerCase();
+      const holding = Number(localWallet[symbol] || 0);
+      const holdingText = holding > 0 ? `${holding} ${(coin.symbol || '').toUpperCase()}` : '–';
 
       const priceUsd  = Number(coin.current_price || 0);
       const change24h = Number(coin.price_change_percentage_24h || 0);
-      const rank      = (coin.market_cap_rank ?? '-') + '';
+      const rank      = (coin.market_cap_rank ?? '-');
+      const safeNameEnc = encodeURIComponent(coin.name || '');
 
       return `
-        <tr data-name="${coin.name.toLowerCase()}" data-symbol="${symbol}">
+        <tr data-name="${(coin.name || '').toLowerCase()}" data-symbol="${symbol}">
           <td class="p-2 border">
             <div class="flex items-center gap-2">
-              <img src="${coin.image}" alt="${coin.symbol.toUpperCase()} logo" class="w-5 h-5 rounded-full" onerror="this.style.display='none'">
-              <span class="text-blue-400 cursor-pointer hover:underline" onclick="setChartCoin('${coin.id}', '${(coin.name || '').replace(/'/g, "\\'")}')">${coin.name}</span>
+              <img src="${coin.image}" alt="${(coin.symbol || '').toUpperCase()} logo" class="w-5 h-5 rounded-full" onerror="this.style.display='none'">
+              <a href="javascript:void(0)" class="text-blue-400 hover:underline"
+                 onclick="setChartCoin('${coin.id}', decodeURIComponent('${safeNameEnc}'))">
+                ${coin.name}
+              </a>
               <span class="text-xs bg-gray-900 border border-gray-700 text-gray-300 rounded-full px-1.5 py-0.5">#${rank}</span>
             </div>
           </td>
-          <td class="p-2 border">${coin.symbol.toUpperCase()}</td>
+          <td class="p-2 border">${(coin.symbol || '').toUpperCase()}</td>
 
-          <!-- store USD base in data attribute; display converted -->
           <td class="p-2 border text-right" data-price-usd="${priceUsd}">
             ${formatCurrency(convertFromUSD(priceUsd))}
           </td>
 
-          <!-- color + arrow -->
           <td class="p-2 border text-right">
             ${renderChangePct(change24h)}
           </td>
 
           <td class="p-2 border">${change24h >= 0 ? '📈Up Trending' : '📉Down Trending'}</td>
           <td class="p-2 border">${holdingText}</td>
-        </tr>
-      `;
+        </tr>`;
     }).join('');
 
-    // Keep currency selection applied if the user was on MYR
+    table.innerHTML = rows;
+
+    // Respect current currency
     applyCurrencyToMarketTable();
 
     // Re-apply active filter if any
     const q = document.getElementById('market-filter')?.value?.trim().toLowerCase();
     if (q) filterMarketRows(q);
 
-    // Update "Last updated" timestamp
+    // Update "Last updated"
     const updatedEl = document.getElementById('market-updated');
     if (updatedEl) {
-      const now = new Date();
-      updatedEl.textContent = `Last updated ${now.toLocaleTimeString()}`;
+      updatedEl.textContent = `Last updated ${new Date().toLocaleTimeString()}`;
     }
   } catch (err) {
     console.error('Error loading market data:', err);
     table.innerHTML = '<tr><td colspan="6" class="text-center text-red-500">Failed to load market data</td></tr>';
   }
 }
+
 
 
 
