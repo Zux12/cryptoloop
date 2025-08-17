@@ -27,12 +27,25 @@ let aiSimInterval;
 let aiSimTable;
 let aiThoughtsBox;
 
-// ===== Currency + FX (authoritative) =====
+// ===== Currency + FX (normalized + cached 24h) =====
 var CURRENCY = (localStorage.getItem('currency_pref') || 'USD').toUpperCase();
-var FX_RATES = { USD: 1 }; // Always base on USD
+var FX_RATES = { USD: 1 }; // Always USD base
 
 function getFxRatesNeededList() {
   return ['USD','MYR','EUR','GBP','SGD','JPY','AUD','CAD','INR','IDR','THB','CNY','KRW'];
+}
+
+// Normalize any object of rates -> uppercase keys + numeric values + USD=1
+function normalizeFx(obj) {
+  var out = { USD: 1 };
+  if (obj && typeof obj === 'object') {
+    Object.keys(obj).forEach(function(k){
+      var key = (k || '').toUpperCase();
+      var v = Number(obj[k]);
+      if (isFinite(v) && v > 0) out[key] = v;
+    });
+  }
+  return out;
 }
 
 async function getFxRates() {
@@ -42,10 +55,9 @@ async function getFxRates() {
   var cached = localStorage.getItem(cacheKey);
   var fetchedAt = Number(localStorage.getItem(timeKey) || 0);
 
-  // Use 24h cache if available
+  // Use normalized cache if fresh
   if (cached && (now - fetchedAt) < 24*60*60*1000) {
-    try { FX_RATES = JSON.parse(cached) || {}; } catch(e) { FX_RATES = {}; }
-    FX_RATES.USD = 1;
+    try { FX_RATES = normalizeFx(JSON.parse(cached)); } catch(e) { FX_RATES = { USD:1 }; }
     return FX_RATES;
   }
 
@@ -54,18 +66,21 @@ async function getFxRates() {
     var r = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=' + symbols);
     var j = await r.json();
     var rates = (j && j.rates) ? j.rates : {};
-    // Normalize to numbers + uppercase keys
-    FX_RATES = { USD: 1 };
-    Object.keys(rates).forEach(function(k){
-      var v = Number(rates[k]);
-      if (isFinite(v) && v > 0) FX_RATES[k.toUpperCase()] = v;
-    });
+
+    FX_RATES = normalizeFx(rates);
     localStorage.setItem(cacheKey, JSON.stringify(FX_RATES));
     localStorage.setItem(timeKey, String(now));
     return FX_RATES;
   } catch (e) {
-    try { FX_RATES = JSON.parse(localStorage.getItem(cacheKey) || '{}') || {}; } catch(_){ FX_RATES = {}; }
-    FX_RATES.USD = 1;
+    // Fallback to cached (normalized) or reasonable static defaults
+    try { FX_RATES = normalizeFx(JSON.parse(localStorage.getItem(cacheKey) || '{}')); }
+    catch(_){ FX_RATES = { USD:1 }; }
+
+    // Optional static safety net if nothing cached:
+    if (Object.keys(FX_RATES).length === 1) {
+      var FX_FALLBACK = { MYR: 4.6, EUR: 0.92, GBP: 0.78, SGD: 1.35, JPY: 155, AUD: 1.50, CAD: 1.35, INR: 83, IDR: 15500, THB: 34, CNY: 7.2, KRW: 1350 };
+      FX_RATES = Object.assign({ USD:1 }, FX_FALLBACK);
+    }
     return FX_RATES;
   }
 }
@@ -105,11 +120,11 @@ function formatCurrency(amount) {
   return sym + Number(amount).toLocaleString(undefined, opts);
 }
 
-// UI sync for headers + Market dropdown (only one of each function now!)
+// UI sync for headers + Market dropdown
 function updateCurrencySelectUI() {
-  var sel = document.getElementById('currency-select');          // Market dropdown
-  var hdr = document.getElementById('price-header-currency');    // Market header
-  var wph = document.getElementById('wallet-price-currency');    // optional spans
+  var sel = document.getElementById('currency-select');
+  var hdr = document.getElementById('price-header-currency');
+  var wph = document.getElementById('wallet-price-currency'); // optional spans
   var wvh = document.getElementById('wallet-value-currency');
   if (sel) sel.value = CURRENCY;
   if (hdr) hdr.textContent = CURRENCY;
@@ -123,7 +138,7 @@ async function setCurrency(cur) {
   localStorage.setItem('currency_pref', CURRENCY);
   updateCurrencySelectUI();
 
-  // Ensure rates exist before we repaint
+  // Ensure rates exist (normalized) before repaint
   await getFxRates();
 
   // Re-render Market + Wallet amounts immediately
@@ -137,9 +152,10 @@ async function setCurrency(cur) {
       formatCurrency(convertFromUSD(window.totalPortfolioValue));
   }
 
-  // // Debug if needed:
+  // // Debug (uncomment if needed):
   // console.log('CURRENCY=', CURRENCY, 'rate=', getRate(CURRENCY), FX_RATES);
 }
+
 
 
 
