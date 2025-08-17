@@ -27,46 +27,94 @@ let aiSimInterval;
 let aiSimTable;
 let aiThoughtsBox;
 
-// ===== Currency state + 24h FX cache =====
-let CURRENCY = localStorage.getItem('currency_pref') || 'USD';
-let USD_MYR_RATE = 4.6; // fallback; will be updated
+// ===== Currency state + FX rates (24h cache) =====
+var CURRENCY = localStorage.getItem('currency_pref') || 'USD';
+var FX_RATES = {}; // { USD:1, MYR:4.6, ... }
 
-async function getUsdMyrRate() {
-  const cacheKey = 'fx_USD_MYR_rate';
-  const timeKey  = 'fx_USD_MYR_fetchedAt';
-  const now = Date.now();
+function getFxRatesNeededList() {
+  return ['USD','MYR','EUR','GBP','SGD','JPY','AUD','CAD','INR','IDR','THB','CNY','KRW'];
+}
 
-  const cached = localStorage.getItem(cacheKey);
-  const fetchedAt = Number(localStorage.getItem(timeKey) || 0);
-  // 24h cache
-  if (cached && now - fetchedAt < 24 * 60 * 60 * 1000) {
-    return Number(cached);
+async function getFxRates() {
+  var cacheKey = 'fx_rates_usd_base';
+  var timeKey  = 'fx_rates_fetchedAt';
+  var now = Date.now();
+  var cached = localStorage.getItem(cacheKey);
+  var fetchedAt = Number(localStorage.getItem(timeKey) || 0);
+
+  if (cached && (now - fetchedAt) < 24*60*60*1000) {
+    try { FX_RATES = JSON.parse(cached) || {}; } catch(e) { FX_RATES = {}; }
+    FX_RATES.USD = FX_RATES.USD || 1;
+    return FX_RATES;
   }
 
   try {
-    // Free, CORS-friendly endpoint
-    const r = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=MYR');
-    const j = await r.json();
-    const rate = j && j.rates && j.rates.MYR ? Number(j.rates.MYR) : 4.6;
-    localStorage.setItem(cacheKey, String(rate));
+    var symbols = getFxRatesNeededList().filter(function(s){ return s !== 'USD'; }).join(',');
+    var r = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=' + symbols);
+    var j = await r.json();
+    FX_RATES = (j && j.rates) ? j.rates : {};
+    FX_RATES.USD = 1; // base
+    localStorage.setItem(cacheKey, JSON.stringify(FX_RATES));
     localStorage.setItem(timeKey, String(now));
-    return rate;
+    return FX_RATES;
   } catch (e) {
     // Fallback to last cached or default
-    return Number(localStorage.getItem(cacheKey)) || 4.6;
+    try { FX_RATES = JSON.parse(localStorage.getItem(cacheKey) || '{}'); } catch(_){}
+    FX_RATES.USD = FX_RATES.USD || 1;
+    return FX_RATES;
   }
 }
-getUsdMyrRate().then(r => { USD_MYR_RATE = r; });
+// Warm the cache on load
+getFxRates();
+
 
 // ===== Conversion + formatting =====
 function convertFromUSD(amountUsd) {
-  return (CURRENCY === 'USD') ? amountUsd : amountUsd * USD_MYR_RATE;
+  var rate = (CURRENCY === 'USD') ? 1 : (FX_RATES[CURRENCY] || 1);
+  return Number(amountUsd) * rate;
 }
+
+function currencySymbol(code) {
+  switch (code) {
+    case 'USD': return '$';
+    case 'MYR': return 'RM ';
+    case 'EUR': return '€';
+    case 'GBP': return '£';
+    case 'SGD': return 'S$';
+    case 'JPY': return '¥';
+    case 'AUD': return 'A$';
+    case 'CAD': return 'C$';
+    case 'INR': return '₹';
+    case 'IDR': return 'Rp';
+    case 'THB': return '฿';
+    case 'CNY': return '¥';
+    case 'KRW': return '₩';
+    default: return code + ' ';
+  }
+}
+
 function formatCurrency(amount) {
-  const opts = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
-  if (CURRENCY === 'USD') return '$' + Number(amount).toLocaleString(undefined, opts);
-  return 'RM ' + Number(amount).toLocaleString(undefined, opts);
+  var sym = currencySymbol(CURRENCY);
+  var opts = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+  return sym + Number(amount).toLocaleString(undefined, opts);
 }
+
+function updateCurrencySelectUI() {
+  var sel = document.getElementById('currency-select');
+  var hdr = document.getElementById('price-header-currency');
+  if (sel) sel.value = CURRENCY;
+  if (hdr) hdr.textContent = CURRENCY;
+}
+
+async function setCurrency(cur) {
+  CURRENCY = cur;
+  localStorage.setItem('currency_pref', cur);
+  updateCurrencySelectUI();
+  if (!FX_RATES[cur]) { await getFxRates(); }
+  applyCurrencyToMarketTable(); // update prices instantly
+}
+
+
 
 // ===== Color-coded % with arrows =====
 function renderChangePct(pct) {
@@ -1419,12 +1467,13 @@ window.onload = function () {
   loadWallet();
   loadCryptoNews();
 
-  // ----- Currency toggle buttons (no optional chaining) -----
-  var usdBtn = document.getElementById('cur-usd');
-  var myrBtn = document.getElementById('cur-myr');
-  if (usdBtn) usdBtn.addEventListener('click', function () { setCurrency('USD'); });
-  if (myrBtn) myrBtn.addEventListener('click', function () { setCurrency('MYR'); });
-  updateCurrencyToggleUI();
+// Wire currency dropdown
+var curSel = document.getElementById('currency-select');
+if (curSel) {
+  curSel.addEventListener('change', function () { setCurrency(this.value); });
+}
+updateCurrencySelectUI();
+
 
   // ----- Filter input -----
   var marketFilter = document.getElementById('market-filter');
