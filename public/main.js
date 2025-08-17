@@ -904,14 +904,96 @@ async function loadCryptoNews() {
 
 //helper function for above script
 function renderNews(articles, newsBox) {
-  newsBox.innerHTML = articles.map(article => `
-    <li class="bg-gray-800 p-3 rounded-lg shadow-md hover:bg-gray-700 transition">
-      <a href="${article.url}" target="_blank" class="block text-sm text-blue-400 hover:underline">
-        <span class="font-semibold text-white">${article.source.name}</span>: ${article.title.slice(0, 100)}...
-      </a>
-    </li>
-  `).join('');
+  // Support both [{...}] and { articles: [...] }
+  if (articles && Array.isArray(articles.articles)) articles = articles.articles;
+
+  if (!Array.isArray(articles) || articles.length === 0) {
+    newsBox.innerHTML = '';
+    const li = document.createElement('li');
+    li.className = 'bg-gray-800/60 border border-gray-700 rounded-lg p-4 text-gray-300';
+    li.textContent = 'No headlines right now. Check back shortly.';
+    newsBox.appendChild(li);
+    return;
+  }
+
+  newsBox.innerHTML = ''; // clear loading state
+  const MAX_ITEMS = 8;
+
+  articles.slice(0, MAX_ITEMS).forEach(article => {
+    const titleTxt   = (article.title || '').trim();
+    const url        = article.url || article.link || '';
+    const sourceName = (article.source && (article.source.name || article.source)) || 'Crypto News';
+    const published  = article.publishedAt || article.pubDate || article.date || '';
+    const excerptTxt = (article.description || article.summary || article.excerpt || '').trim();
+
+    // <li>
+    const li = document.createElement('li');
+
+    // Make whole card clickable if URL exists
+    const wrapper = url ? document.createElement('a') : document.createElement('div');
+    wrapper.className = 'block bg-gray-800/70 border border-gray-700 rounded-xl p-3.5 hover:bg-gray-700/80 hover:border-gray-600 transition';
+    if (url) {
+      wrapper.href = url;
+      wrapper.target = '_blank';
+      wrapper.rel = 'noopener';
+      wrapper.setAttribute('aria-label', titleTxt || 'Open article');
+    }
+
+    // Title
+    const title = document.createElement('div');
+    title.className = 'font-bold text-base text-gray-200';
+    title.textContent = titleTxt || 'Untitled';
+
+    // Excerpt (optional)
+    if (excerptTxt) {
+      const excerpt = document.createElement('div');
+      excerpt.className = 'text-sm text-gray-400 mt-1';
+      // clamp to ~140 chars
+      excerpt.textContent = excerptTxt.length > 140 ? (excerptTxt.slice(0, 137) + '…') : excerptTxt;
+      wrapper.appendChild(excerpt);
+    }
+
+    // Meta row
+    const meta = document.createElement('div');
+    meta.className = 'flex items-center gap-2 text-xs text-gray-400 mt-2';
+
+    const source = document.createElement('span');
+    source.className = 'bg-gray-900 border border-gray-700 text-gray-300 rounded-full px-2 py-0.5';
+    source.textContent = sourceName;
+
+    const dot = document.createElement('span');
+    dot.textContent = '•';
+
+    const timeEl = document.createElement('span');
+    timeEl.textContent = relativeTime(published);
+
+    meta.appendChild(source);
+    meta.appendChild(dot);
+    meta.appendChild(timeEl);
+
+    wrapper.appendChild(title);
+    wrapper.appendChild(meta);
+    li.appendChild(wrapper);
+    newsBox.appendChild(li);
+  });
 }
+
+function relativeTime(isoString) {
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '';
+    const diffSec = (Date.now() - d.getTime()) / 1000;
+
+    if (diffSec < 60)   return `${Math.floor(diffSec)}s ago`;
+    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+    if (diffSec < 172800) return 'Yesterday';
+    return d.toLocaleDateString();
+  } catch {
+    return '';
+  }
+}
+
 
 
 function toggleVolume() {
