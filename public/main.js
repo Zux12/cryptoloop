@@ -27,9 +27,9 @@ let aiSimInterval;
 let aiSimTable;
 let aiThoughtsBox;
 
-// ===== Currency state + FX rates (24h cache) =====
-var CURRENCY = localStorage.getItem('currency_pref') || 'USD';
-var FX_RATES = {}; // { USD:1, MYR:4.6, ... }
+// ===== Currency + FX (authoritative) =====
+var CURRENCY = (localStorage.getItem('currency_pref') || 'USD').toUpperCase();
+var FX_RATES = { USD: 1 }; // Always base on USD
 
 function getFxRatesNeededList() {
   return ['USD','MYR','EUR','GBP','SGD','JPY','AUD','CAD','INR','IDR','THB','CNY','KRW'];
@@ -42,35 +42,46 @@ async function getFxRates() {
   var cached = localStorage.getItem(cacheKey);
   var fetchedAt = Number(localStorage.getItem(timeKey) || 0);
 
+  // Use 24h cache if available
   if (cached && (now - fetchedAt) < 24*60*60*1000) {
     try { FX_RATES = JSON.parse(cached) || {}; } catch(e) { FX_RATES = {}; }
-    FX_RATES.USD = FX_RATES.USD || 1;
+    FX_RATES.USD = 1;
     return FX_RATES;
   }
+
   try {
     var symbols = getFxRatesNeededList().filter(function(s){ return s !== 'USD'; }).join(',');
     var r = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=' + symbols);
     var j = await r.json();
-    FX_RATES = (j && j.rates) ? j.rates : {};
-    FX_RATES.USD = 1;
+    var rates = (j && j.rates) ? j.rates : {};
+    // Normalize to numbers + uppercase keys
+    FX_RATES = { USD: 1 };
+    Object.keys(rates).forEach(function(k){
+      var v = Number(rates[k]);
+      if (isFinite(v) && v > 0) FX_RATES[k.toUpperCase()] = v;
+    });
     localStorage.setItem(cacheKey, JSON.stringify(FX_RATES));
     localStorage.setItem(timeKey, String(now));
     return FX_RATES;
   } catch (e) {
-    try { FX_RATES = JSON.parse(localStorage.getItem(cacheKey) || '{}'); } catch(_){}
-    FX_RATES.USD = FX_RATES.USD || 1;
+    try { FX_RATES = JSON.parse(localStorage.getItem(cacheKey) || '{}') || {}; } catch(_){ FX_RATES = {}; }
+    FX_RATES.USD = 1;
     return FX_RATES;
   }
 }
-// warm the cache
-getFxRates();
+
+function getRate(code) {
+  code = (code || 'USD').toUpperCase();
+  var r = FX_RATES[code];
+  return (typeof r === 'number' && isFinite(r) && r > 0) ? r : 1;
+}
 
 function convertFromUSD(amountUsd) {
-  var rate = (CURRENCY === 'USD') ? 1 : (FX_RATES[CURRENCY] || 1);
-  return Number(amountUsd) * rate;
+  return Number(amountUsd) * getRate(CURRENCY);
 }
+
 function currencySymbol(code) {
-  switch (code) {
+  switch ((code || 'USD').toUpperCase()) {
     case 'USD': return '$';
     case 'MYR': return 'RM ';
     case 'EUR': return '€';
@@ -84,19 +95,21 @@ function currencySymbol(code) {
     case 'THB': return '฿';
     case 'CNY': return '¥';
     case 'KRW': return '₩';
-    default: return code + ' ';
+    default:     return code.toUpperCase() + ' ';
   }
 }
+
 function formatCurrency(amount) {
   var sym = currencySymbol(CURRENCY);
   var opts = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
   return sym + Number(amount).toLocaleString(undefined, opts);
 }
 
+// UI sync for headers + Market dropdown (only one of each function now!)
 function updateCurrencySelectUI() {
-  var sel = document.getElementById('currency-select');
-  var hdr = document.getElementById('price-header-currency');
-  var wph = document.getElementById('wallet-price-currency');
+  var sel = document.getElementById('currency-select');          // Market dropdown
+  var hdr = document.getElementById('price-header-currency');    // Market header
+  var wph = document.getElementById('wallet-price-currency');    // optional spans
   var wvh = document.getElementById('wallet-value-currency');
   if (sel) sel.value = CURRENCY;
   if (hdr) hdr.textContent = CURRENCY;
@@ -104,72 +117,30 @@ function updateCurrencySelectUI() {
   if (wvh) wvh.textContent = CURRENCY;
 }
 
+// Single setter used by dropdown
 async function setCurrency(cur) {
-  CURRENCY = cur;
-  localStorage.setItem('currency_pref', cur);
-
-  // Sync dropdown + headers
+  CURRENCY = (cur || 'USD').toUpperCase();
+  localStorage.setItem('currency_pref', CURRENCY);
   updateCurrencySelectUI();
 
-  // Ensure we actually have rates (don’t rely on conditional)
+  // Ensure rates exist before we repaint
   await getFxRates();
 
   // Re-render Market + Wallet amounts immediately
   if (typeof applyCurrencyToMarketTable === 'function') applyCurrencyToMarketTable();
   if (typeof applyCurrencyToWalletTable === 'function') applyCurrencyToWalletTable();
 
-  // Update Total Portfolio Value in the selected currency (wallet baseline remains USD)
+  // Update TPV label (wallet baseline remains USD)
   var tv = document.getElementById('total-value');
   if (tv && typeof window.totalPortfolioValue === 'number') {
     tv.textContent = 'Total Portfolio Value: ' +
       formatCurrency(convertFromUSD(window.totalPortfolioValue));
   }
+
+  // // Debug if needed:
+  // console.log('CURRENCY=', CURRENCY, 'rate=', getRate(CURRENCY), FX_RATES);
 }
 
-
-
-
-
-// ===== Color-coded % with arrows =====
-function renderChangePct(pct) {
-  const v = Number(pct);
-  if (!isFinite(v)) return '<span class="text-gray-300">—</span>';
-  const cls = v > 0 ? 'text-green-400' : v < 0 ? 'text-red-400' : 'text-gray-300';
-  const arrow = v > 0 ? '▲' : v < 0 ? '▼' : '◆';
-  return `<span class="${cls}">${arrow} ${v.toFixed(2)}%</span>`;
-}
-
-// Dropdown currency UI + setter
-function updateCurrencySelectUI() {
-  var sel = document.getElementById('currency-select');
-  var hdr = document.getElementById('price-header-currency');
-  var wph = document.getElementById('wallet-price-currency'); // optional
-  var wvh = document.getElementById('wallet-value-currency'); // optional
-  if (sel) sel.value = CURRENCY;
-  if (hdr) hdr.textContent = CURRENCY;
-  if (wph) wph.textContent = CURRENCY;
-  if (wvh) wvh.textContent = CURRENCY;
-}
-
-async function setCurrency(cur) {
-  CURRENCY = cur;
-  localStorage.setItem('currency_pref', cur);
-  updateCurrencySelectUI();
-
-  // Ensure we have rates for this currency
-  if (!FX_RATES[cur]) { await getFxRates(); }
-
-  // Re-render displayed amounts immediately
-  if (typeof applyCurrencyToMarketTable === 'function') applyCurrencyToMarketTable();
-  if (typeof applyCurrencyToWalletTable === 'function') applyCurrencyToWalletTable();
-
-  // Update Total Portfolio Value label
-  var tv = document.getElementById('total-value');
-  if (tv && typeof window.totalPortfolioValue === 'number') {
-    tv.textContent = 'Total Portfolio Value: ' +
-      formatCurrency(convertFromUSD(window.totalPortfolioValue));
-  }
-}
 
 
 
@@ -1509,6 +1480,7 @@ function applyCurrencyToWalletTable() {
 
 
 
+
 // ===== Filter helpers =====
 function debounce(fn, wait = 200) {
   let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
@@ -1535,34 +1507,26 @@ window.onload = function () {
   loadWallet();
   loadCryptoNews();
 
-  // ----- Currency dropdown (Market tab) -----
+  // Currency dropdown (Market tab)
   var curSel = document.getElementById('currency-select');
   if (curSel) {
     curSel.addEventListener('change', function () { setCurrency(this.value); });
   }
   updateCurrencySelectUI();
 
-  // Re-apply conversions once FX rates are loaded (handles first-load race)
+  // Ensure rates, then repaint once with current currency
   getFxRates().then(function () {
-    if (typeof applyCurrencyToMarketTable === 'function') applyCurrencyToMarketTable();
-    if (typeof applyCurrencyToWalletTable === 'function') applyCurrencyToWalletTable();
-
-    // Repaint TPV label in current currency
-    var tv = document.getElementById('total-value');
-    if (tv && typeof window.totalPortfolioValue === 'number') {
-      tv.textContent = 'Total Portfolio Value: ' +
-        formatCurrency(convertFromUSD(window.totalPortfolioValue));
-    }
+    setCurrency(CURRENCY); // will re-apply Market, Wallet, and TPV using real rate
   });
 
-  // ----- Filter input -----
+  // Filter input
   var marketFilter = document.getElementById('market-filter');
   if (marketFilter) {
     var onType = debounce(function (e) { filterMarketRows(e.target.value); }, 120);
     marketFilter.addEventListener('input', onType);
   }
 
-  // ----- Refresh button -----
+  // Refresh button
   var refreshBtn = document.getElementById('market-refresh');
   if (refreshBtn) {
     refreshBtn.addEventListener('click', async function () {
@@ -1582,18 +1546,18 @@ window.onload = function () {
     });
   }
 
-  // ----- Histories & form wiring -----
+  // Histories & form wiring
   renderBuyHistory();
   renderSellTable();
   loadSellHistoryTable();
   renderApprovedBuysForSelling();
   clearAndBindBuyFormOnce();
 
-  // Guard these in case inputs are missing
   var buySymEl = document.getElementById('buy-symbol');
   var buyAmtEl = document.getElementById('buy-amount');
   if (buySymEl) buySymEl.addEventListener('input', checkBuyFormValidity);
   if (buyAmtEl) buyAmtEl.addEventListener('input', checkBuyFormValidity);
 };
+
 
 
