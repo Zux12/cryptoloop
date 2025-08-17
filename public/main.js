@@ -1413,47 +1413,57 @@ function filterMarketRows(query) {
 
 // Initialize on load
 window.onload = function () {
+  // Initial data loads
   loadUserName();
   loadMarketData();
   loadWallet();
-  // Wire currency toggle buttons
-  const usdBtn = document.getElementById('cur-usd');
-  const myrBtn = document.getElementById('cur-myr');
-  usdBtn?.addEventListener('click', () => setCurrency('USD'));
-  myrBtn?.addEventListener('click', () => setCurrency('MYR'));
-  updateCurrencyToggleUI();
   loadCryptoNews();
-  // Filter input
-  const marketFilter = document.getElementById('market-filter');
-  if (marketFilter) {
-  const onType = debounce(e => filterMarketRows(e.target.value), 120);
-  marketFilter.addEventListener('input', onType);
-  }
-  // Refresh button
-  const refreshBtn = document.getElementById('market-refresh');
-  if (refreshBtn) {
-  refreshBtn.addEventListener('click', async () => {
-    refreshBtn.disabled = true;
-    refreshBtn.setAttribute('aria-busy', 'true');
-    refreshBtn.classList.add('opacity-60', 'cursor-wait');
-    const oldText = refreshBtn.textContent;
-    refreshBtn.textContent = 'Refreshing…';
-    try {
-      await loadMarketData();
-    } finally {
-      refreshBtn.textContent = oldText;
-      refreshBtn.classList.remove('opacity-60', 'cursor-wait');
-      refreshBtn.removeAttribute('aria-busy');
-      refreshBtn.disabled = false;
-    }
-  });
-  }
-  renderBuyHistory(); // ✅ Add this
-  renderSellTable(); // ✅ Now added here
-  loadSellHistoryTable();  // ✅ THIS LINE
-  renderApprovedBuysForSelling(); // optional for Sell tab
-  clearAndBindBuyFormOnce(); // ✅ one and only buy form bind
-  document.getElementById("buy-symbol").addEventListener("input", checkBuyFormValidity);
-  document.getElementById("buy-amount").addEventListener("input", checkBuyFormValidity);
 
+  // ----- Currency toggle buttons (no optional chaining) -----
+  var usdBtn = document.getElementById('cur-usd');
+  var myrBtn = document.getElementById('cur-myr');
+  if (usdBtn) usdBtn.addEventListener('click', function () { setCurrency('USD'); });
+  if (myrBtn) myrBtn.addEventListener('click', function () { setCurrency('MYR'); });
+  updateCurrencyToggleUI();
+
+  // ----- Filter input -----
+  var marketFilter = document.getElementById('market-filter');
+  if (marketFilter) {
+    var onType = debounce(function (e) { filterMarketRows(e.target.value); }, 120);
+    marketFilter.addEventListener('input', onType);
+  }
+
+  // ----- Refresh button -----
+  var refreshBtn = document.getElementById('market-refresh');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', async function () {
+      refreshBtn.disabled = true;
+      refreshBtn.setAttribute('aria-busy', 'true');
+      refreshBtn.classList.add('opacity-60', 'cursor-wait');
+      var oldText = refreshBtn.textContent;
+      refreshBtn.textContent = 'Refreshing…';
+      try {
+        await loadMarketData();
+      } finally {
+        refreshBtn.textContent = oldText;
+        refreshBtn.classList.remove('opacity-60', 'cursor-wait');
+        refreshBtn.removeAttribute('aria-busy');
+        refreshBtn.disabled = false;
+      }
+    });
+  }
+
+  // ----- Histories & form wiring -----
+  renderBuyHistory();
+  renderSellTable();
+  loadSellHistoryTable();
+  renderApprovedBuysForSelling();
+  clearAndBindBuyFormOnce();
+
+  // Guard these in case inputs are missing
+  var buySymEl = document.getElementById('buy-symbol');
+  var buyAmtEl = document.getElementById('buy-amount');
+  if (buySymEl) buySymEl.addEventListener('input', checkBuyFormValidity);
+  if (buyAmtEl) buyAmtEl.addEventListener('input', checkBuyFormValidity);
 };
+
