@@ -27,6 +27,81 @@ let aiSimInterval;
 let aiSimTable;
 let aiThoughtsBox;
 
+// ===== Currency state + 24h FX cache =====
+let CURRENCY = localStorage.getItem('currency_pref') || 'USD';
+let USD_MYR_RATE = 4.6; // fallback; will be updated
+
+async function getUsdMyrRate() {
+  const cacheKey = 'fx_USD_MYR_rate';
+  const timeKey  = 'fx_USD_MYR_fetchedAt';
+  const now = Date.now();
+
+  const cached = localStorage.getItem(cacheKey);
+  const fetchedAt = Number(localStorage.getItem(timeKey) || 0);
+  // 24h cache
+  if (cached && now - fetchedAt < 24 * 60 * 60 * 1000) {
+    return Number(cached);
+  }
+
+  try {
+    // Free, CORS-friendly endpoint
+    const r = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=MYR');
+    const j = await r.json();
+    const rate = j && j.rates && j.rates.MYR ? Number(j.rates.MYR) : 4.6;
+    localStorage.setItem(cacheKey, String(rate));
+    localStorage.setItem(timeKey, String(now));
+    return rate;
+  } catch (e) {
+    // Fallback to last cached or default
+    return Number(localStorage.getItem(cacheKey)) || 4.6;
+  }
+}
+getUsdMyrRate().then(r => { USD_MYR_RATE = r; });
+
+// ===== Conversion + formatting =====
+function convertFromUSD(amountUsd) {
+  return (CURRENCY === 'USD') ? amountUsd : amountUsd * USD_MYR_RATE;
+}
+function formatCurrency(amount) {
+  const opts = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+  if (CURRENCY === 'USD') return '$' + Number(amount).toLocaleString(undefined, opts);
+  return 'RM ' + Number(amount).toLocaleString(undefined, opts);
+}
+
+// ===== Color-coded % with arrows =====
+function renderChangePct(pct) {
+  const v = Number(pct);
+  if (!isFinite(v)) return '<span class="text-gray-300">—</span>';
+  const cls = v > 0 ? 'text-green-400' : v < 0 ? 'text-red-400' : 'text-gray-300';
+  const arrow = v > 0 ? '▲' : v < 0 ? '▼' : '◆';
+  return `<span class="${cls}">${arrow} ${v.toFixed(2)}%</span>`;
+}
+
+// ===== Toggle wiring (buttons + header text) =====
+function updateCurrencyToggleUI() {
+  const usdBtn = document.getElementById('cur-usd');
+  const myrBtn = document.getElementById('cur-myr');
+  const priceHdr = document.getElementById('price-header-currency');
+
+  if (usdBtn && myrBtn) {
+    usdBtn.classList.toggle('ring-2', CURRENCY === 'USD');
+    usdBtn.classList.toggle('ring-cyan-400', CURRENCY === 'USD');
+    myrBtn.classList.toggle('ring-2', CURRENCY === 'MYR');
+    myrBtn.classList.toggle('ring-cyan-400', CURRENCY === 'MYR');
+  }
+  if (priceHdr) priceHdr.textContent = CURRENCY;
+}
+
+async function setCurrency(cur) {
+  CURRENCY = cur;
+  localStorage.setItem('currency_pref', cur);
+  updateCurrencyToggleUI();
+  if (cur === 'MYR' && !USD_MYR_RATE) USD_MYR_RATE = await getUsdMyrRate();
+  applyCurrencyToMarketTable(); // update table prices immediately
+}
+
+
+
 // Handle Tab Switching
 document.querySelectorAll('nav button[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -127,25 +202,37 @@ async function loadMarketData() {
     const res = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}`);
     const prices = await res.json();
 
-    table.innerHTML = prices.map(coin => {
-      const symbol = coin.symbol.toLowerCase();
-      const holding = localWallet[symbol] || 0;
-      const holdingText = holding > 0 ? `${holding} ${coin.symbol.toUpperCase()}` : '–';
-      console.log(`📊 ${coin.name} (${symbol}) → holding:`, holding);
+table.innerHTML = prices.map(coin => {
+  const symbol = coin.symbol.toLowerCase();
+  const holding = localWallet[symbol] || 0;
+  const holdingText = holding > 0 ? `${holding} ${coin.symbol.toUpperCase()}` : '–';
 
-      return `
-        <tr>
-          <td class="p-2 border text-blue-400 cursor-pointer hover:underline" onclick="setChartCoin('${coin.id}', '${coin.name}')">${coin.name}</td>
-          <td class="p-2 border">${coin.symbol.toUpperCase()}</td>
-          <td class="p-2 border">$${coin.current_price}</td>
-          <td class="p-2 border ${coin.price_change_percentage_24h >= 0 ? 'text-green-400' : 'text-red-400'}">
-            ${coin.price_change_percentage_24h.toFixed(2)}%
-          </td>
-          <td class="p-2 border">${coin.price_change_percentage_24h >= 0 ? '📈Up Trending' : '📉Down Trending'}</td>
-          <td class="p-2 border">${holdingText}</td>
-        </tr>
-      `;
-    }).join(''); // ✅ This was misplaced in your version
+  const priceUsd  = Number(coin.current_price || 0);
+  const change24h = Number(coin.price_change_percentage_24h || 0);
+
+  return `
+    <tr>
+      <td class="p-2 border text-blue-400 cursor-pointer hover:underline" onclick="setChartCoin('${coin.id}', '${coin.name}')">${coin.name}</td>
+      <td class="p-2 border">${coin.symbol.toUpperCase()}</td>
+
+      <!-- store USD base in data attribute; display converted -->
+      <td class="p-2 border text-right" data-price-usd="${priceUsd}">
+        ${formatCurrency(convertFromUSD(priceUsd))}
+      </td>
+
+      <!-- color + arrow -->
+      <td class="p-2 border text-right">
+        ${renderChangePct(change24h)}
+      </td>
+
+      <td class="p-2 border">${change24h >= 0 ? '📈Up Trending' : '📉Down Trending'}</td>
+      <td class="p-2 border">${holdingText}</td>
+    </tr>
+  `;
+}).join('');
+// Re-apply conversion in case the user had MYR selected before this render
+applyCurrencyToMarketTable();
+
 
   } catch (err) {
     console.error('Error loading market data:', err);
@@ -1275,6 +1362,16 @@ async function loadSellHistoryTable() {
     }
   }
   
+// Convert all price cells in Market Overview based on data-price-usd
+function applyCurrencyToMarketTable() {
+  const priceCells = document.querySelectorAll('#market-table tbody td[data-price-usd]');
+  priceCells.forEach(td => {
+    const usd = Number(td.getAttribute('data-price-usd') || '0');
+    const converted = convertFromUSD(usd);
+    td.textContent = formatCurrency(converted);
+    td.classList.add('text-right');
+  });
+}
 
 
 
@@ -1284,6 +1381,12 @@ window.onload = function () {
   loadUserName();
   loadMarketData();
   loadWallet();
+  // Wire currency toggle buttons
+  const usdBtn = document.getElementById('cur-usd');
+  const myrBtn = document.getElementById('cur-myr');
+  usdBtn?.addEventListener('click', () => setCurrency('USD'));
+  myrBtn?.addEventListener('click', () => setCurrency('MYR'));
+  updateCurrencyToggleUI();
   loadCryptoNews();
   renderBuyHistory(); // ✅ Add this
   renderSellTable(); // ✅ Now added here
@@ -1291,6 +1394,6 @@ window.onload = function () {
   renderApprovedBuysForSelling(); // optional for Sell tab
   clearAndBindBuyFormOnce(); // ✅ one and only buy form bind
   document.getElementById("buy-symbol").addEventListener("input", checkBuyFormValidity);
-document.getElementById("buy-amount").addEventListener("input", checkBuyFormValidity);
+  document.getElementById("buy-amount").addEventListener("input", checkBuyFormValidity);
 
 };
