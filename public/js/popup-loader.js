@@ -2,79 +2,107 @@
 (function () {
   const SHOW_DELAY_MS = 1500; // 1.5 seconds
 
+  // Try common locations for popup.html regardless of where login.html is served from.
+  const candidatePopupPaths = [
+    '/public/popup/popup.html',
+    '/popup/popup.html',
+    'popup/popup.html',
+    './popup/popup.html'
+  ];
+
+  // Utility: find first URL that returns 200-299
+  async function findExisting(urls) {
+    for (const u of urls) {
+      try {
+        const res = await fetch(u, { method: 'HEAD', cache: 'no-store' });
+        if (res.ok) return u;
+      } catch (e) {
+        // ignore and keep trying
+      }
+    }
+    return null;
+  }
+
   function createOverlay(src) {
     const overlay = document.createElement('div');
+    overlay.id = 'scam-warning-overlay';
     overlay.setAttribute('role', 'presentation');
-    overlay.style.position = 'fixed';
-    overlay.style.inset = '0';
-    overlay.style.background = 'rgba(0,0,0,0.7)';
-    overlay.style.backdropFilter = 'blur(2px)';
-    overlay.style.zIndex = '9999';
-    overlay.style.display = 'flex';
-    overlay.style.alignItems = 'center';
-    overlay.style.justifyContent = 'center';
-    overlay.style.padding = '20px';
+    Object.assign(overlay.style, {
+      position: 'fixed',
+      inset: '0',
+      background: 'rgba(0,0,0,0.7)',
+      backdropFilter: 'blur(2px)',
+      zIndex: '9999',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px'
+    });
 
     const frame = document.createElement('iframe');
     frame.src = src;
     frame.title = 'Security Warning';
-    frame.style.width = 'min(720px, 96vw)';
-    frame.style.height = 'min(520px, 90vh)';
-    frame.style.border = '0';
-    frame.style.borderRadius = '18px';
-    frame.style.boxShadow = '0 25px 80px rgba(0,0,0,0.65)';
+    Object.assign(frame.style, {
+      width: 'min(720px, 96vw)',
+      height: 'min(520px, 90vh)',
+      border: '0',
+      borderRadius: '18px',
+      boxShadow: '0 25px 80px rgba(0,0,0,0.65)'
+    });
     frame.setAttribute('aria-modal', 'true');
 
-    // Close on overlay click (outside frame)
+    // Close on overlay click outside iframe
     overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) {
-        closeOverlay();
-      }
+      if (e.target === overlay) closeOverlay();
     });
 
-    // Close on ESC
+    // ESC to close
     function onKey(e) {
-      if (e.key === 'Escape') {
-        closeOverlay();
-      }
+      if (e.key === 'Escape') closeOverlay();
     }
     document.addEventListener('keydown', onKey);
 
-    function closeOverlay() {
-      document.removeEventListener('keydown', onKey);
-      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-      // Restore scroll
-      document.documentElement.style.overflow = '';
-    }
-
-    // Listen to iframe message to close
-    window.addEventListener('message', (ev) => {
+    // Message from iframe to close
+    function onMsg(ev) {
       if (ev && ev.data && ev.data.type === 'POPUP_CLOSE') {
         closeOverlay();
       }
-    });
+    }
+    window.addEventListener('message', onMsg);
+
+    function closeOverlay() {
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('message', onMsg);
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      document.documentElement.style.overflow = '';
+    }
 
     overlay.appendChild(frame);
-    return { overlay, closeOverlay };
+    return overlay;
   }
 
-  function showPopup() {
-    // Prevent double-show
-    if (document.querySelector('#scam-warning-overlay')) return;
+  async function showPopup() {
+    // Prevent double show
+    if (document.getElementById('scam-warning-overlay')) return;
 
-    const { overlay } = createOverlay('/public/popup/popup.html');
-    overlay.id = 'scam-warning-overlay';
+    const found = await findExisting(candidatePopupPaths);
+    if (!found) {
+      console.warn('[popup-loader] Could not find popup.html at any known path:', candidatePopupPaths);
+      return;
+    }
+
+    const overlay = createOverlay(found);
     document.body.appendChild(overlay);
-
-    // Disable page scroll while open
     document.documentElement.style.overflow = 'hidden';
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(showPopup, SHOW_DELAY_MS);
-    });
-  } else {
+  function start() {
     setTimeout(showPopup, SHOW_DELAY_MS);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
   }
 })();
