@@ -149,6 +149,74 @@
     }
   }
 
+// === SECOND POPUP: SCAM ALERT banner (red, blinking) ========================
+function showStackedAlert() {
+  if (document.getElementById('scam-alert-overlay')) return; // prevent duplicates
+
+  // Global style for blink
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes blink { 50% { opacity: 0; } }
+    .sa-blink { animation: blink 0.9s steps(1, end) infinite; }
+  `;
+  document.head.appendChild(style);
+
+  // Transparent overlay that doesn't block clicks to underlying popup (pointer-events: none)
+  const overlay = document.createElement('div');
+  overlay.id = 'scam-alert-overlay';
+  Object.assign(overlay.style, {
+    position: 'fixed',
+    inset: '0',
+    background: 'transparent',
+    zIndex: '10000',
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    padding: '20px',
+    pointerEvents: 'none' // allow interaction with the first popup below
+  });
+
+  // The red banner box (this one does capture clicks so the close button works)
+  const box = document.createElement('div');
+  Object.assign(box.style, {
+    marginTop: '8vh',
+    background: '#dc2626',     // red-600
+    color: '#ffffff',
+    padding: '18px 24px',
+    borderRadius: '12px',
+    boxShadow: '0 16px 40px rgba(0,0,0,0.35)',
+    fontWeight: '900',
+    fontSize: 'clamp(18px, 3.5vw, 34px)',
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    pointerEvents: 'auto'       // clickable
+  });
+
+  // Content + a close “×” so you can dismiss this top banner if you want
+  box.innerHTML = `
+    <span class="sa-blink">SCAM ALERT!</span>
+    <button type="button" aria-label="Close"
+      style="margin-left:16px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;
+             padding:8px 10px;font-weight:700;cursor:pointer;line-height:1;">
+      ×
+    </button>
+  `;
+
+  // Close only the red banner (the first popup stays)
+  box.querySelector('button').addEventListener('click', () => {
+    const p = overlay.parentNode;
+    if (p) p.removeChild(overlay);
+  });
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+}
+
+
+  
   // --- Fallback inline popup (no iframe) ------------------------------------
 
   function renderFallback(overlay) {
