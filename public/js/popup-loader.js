@@ -317,6 +317,9 @@ function showStackedAlert() {
     const { overlay, closeOverlay } = createOverlayShell();
     document.body.appendChild(overlay);
     lockScroll(true);
+    // Show the red "SCAM ALERT!" banner 2s after the first popup appears
+setTimeout(showStackedAlert, 2000);
+
 
     // Try to load popup via iframe first
     const found = await findExisting(candidatePopupPaths);
