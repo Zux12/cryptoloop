@@ -149,11 +149,12 @@
     }
   }
 
-// === SECOND POPUP: SCAM ALERT banner (red, blinking) ========================
+
+// === SECOND POPUP: SCAM ALERT banner (no close button) ======================
 function showStackedAlert() {
   if (document.getElementById('scam-alert-overlay')) return; // prevent duplicates
 
-  // Global style for blink
+  // Blink effect
   const style = document.createElement('style');
   style.textContent = `
     @keyframes blink { 50% { opacity: 0; } }
@@ -161,7 +162,7 @@ function showStackedAlert() {
   `;
   document.head.appendChild(style);
 
-  // Transparent overlay that doesn't block clicks to underlying popup (pointer-events: none)
+  // Transparent overlay ABOVE the first popup; doesn't intercept clicks
   const overlay = document.createElement('div');
   overlay.id = 'scam-alert-overlay';
   Object.assign(overlay.style, {
@@ -173,14 +174,14 @@ function showStackedAlert() {
     alignItems: 'flex-start',
     justifyContent: 'center',
     padding: '20px',
-    pointerEvents: 'none' // allow interaction with the first popup below
+    pointerEvents: 'none' // allow interaction with popup below
   });
 
-  // The red banner box (this one does capture clicks so the close button works)
+  // The red banner (also non-interactive)
   const box = document.createElement('div');
   Object.assign(box.style, {
     marginTop: '8vh',
-    background: '#dc2626',     // red-600
+    background: '#dc2626',     // red background
     color: '#ffffff',
     padding: '18px 24px',
     borderRadius: '12px',
@@ -189,19 +190,16 @@ function showStackedAlert() {
     fontSize: 'clamp(18px, 3.5vw, 34px)',
     letterSpacing: '0.06em',
     textTransform: 'uppercase',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    pointerEvents: 'auto'       // clickable
+    pointerEvents: 'none'       // banner itself won't swallow clicks
   });
-
-  // Content + a close “×” so you can dismiss this top banner if you want
-  box.innerHTML = `
-    <span class="sa-blink">SCAM ALERT!</span>
+  box.setAttribute('role', 'alert');
+  box.setAttribute('aria-live', 'assertive');
+  box.innerHTML = `<span class="sa-blink">SCAM ALERT!</span>`;
 
   overlay.appendChild(box);
   document.body.appendChild(overlay);
 }
+
 
 
   
