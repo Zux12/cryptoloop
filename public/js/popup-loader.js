@@ -13,7 +13,7 @@
   // Language pack (used by fallback UI)
   const T = {
     en: {
-      title: "This website is NOT a real trading platform.",
+      title: "This website is NOT a real trading platform. CryptoLoop",
       sub: "If you reached this page via an offer or message, you may have been targeted by a scam.",
       p1: "Warning: This site is a decoy. It does not provide investment services and no real trading occurs here. If you were instructed to log in, stop immediately.",
       li: [
@@ -26,7 +26,7 @@
       exit: "Exit site"
     },
     ms: {
-      title: "Laman web ini BUKAN platform dagangan sebenar.",
+      title: "Laman web ini BUKAN platform dagangan sebenar. CryptoLoop",
       sub: "Jika anda tiba di sini melalui tawaran atau mesej, anda mungkin menjadi sasaran penipuan.",
       p1: "Amaran: Laman ini hanyalah olokan. Tiada perkhidmatan pelaburan atau dagangan sebenar di sini. Jika anda diminta untuk log masuk, hentikan segera.",
       li: [
@@ -39,7 +39,7 @@
       exit: "Keluar"
     },
     id: {
-      title: "Situs ini BUKAN platform trading yang nyata.",
+      title: "Situs ini BUKAN platform trading yang nyata. CryptoLoop",
       sub: "Jika Anda sampai di sini melalui tawaran atau pesan, Anda mungkin menjadi target penipuan.",
       p1: "Peringatan: Situs ini hanyalah umpan. Tidak ada layanan investasi atau trading sungguhan di sini. Jika Anda diminta login, segera hentikan.",
       li: [
@@ -52,7 +52,7 @@
       exit: "Keluar"
     },
     zh: {
-      title: "本网站并非真实的交易平台。",
+      title: "本网站并非真实的交易平台。 CryptoLoop",
       sub: "如果您通过广告或消息来到这里，您可能正遭遇诈骗。",
       p1: "警告：本网站为诱导页面。这里不提供投资服务，也不存在真实交易。如果有人让您登录，请立即停止。",
       li: [
@@ -65,7 +65,7 @@
       exit: "离开网站"
     },
     ar: {
-      title: "هذا الموقع ليس منصة تداول حقيقية.",
+      title: "هذا الموقع ليس منصة تداول حقيقية. CryptoLoop",
       sub: "إذا وصلت إلى هذه الصفحة عبر عرض أو رسالة، فقد تكون هدفًا لعملية احتيال.",
       p1: "تحذير: هذا الموقع طُعم. لا يقدم خدمات استثمار ولا تتم أي عمليات تداول حقيقية هنا. إذا طُلب منك تسجيل الدخول، فتوقف فورًا.",
       li: [
@@ -198,18 +198,6 @@ function showStackedAlert() {
   // Content + a close “×” so you can dismiss this top banner if you want
   box.innerHTML = `
     <span class="sa-blink">SCAM ALERT!</span>
-    <button type="button" aria-label="Close"
-      style="margin-left:16px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;
-             padding:8px 10px;font-weight:700;cursor:pointer;line-height:1;">
-      ×
-    </button>
-  `;
-
-  // Close only the red banner (the first popup stays)
-  box.querySelector('button').addEventListener('click', () => {
-    const p = overlay.parentNode;
-    if (p) p.removeChild(overlay);
-  });
 
   overlay.appendChild(box);
   document.body.appendChild(overlay);
