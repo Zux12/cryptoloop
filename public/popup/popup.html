@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Security Warning</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <style>
+    :root {
+      --bg: #0b0f1a;
+      --overlay: rgba(0,0,0,0.65);
+      --card: #111827;
+      --accent: #ef4444; /* red */
+      --accent-2: #f59e0b; /* amber */
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --focus: #ffffff;
+    }
+    html,body { margin:0; padding:0; background:transparent; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";}
+    .wrap {
+      display:flex; align-items:center; justify-content:center;
+      min-height:100dvh; padding:24px; background: transparent;
+    }
+    .card {
+      width:min(680px, 94vw);
+      background: linear-gradient(180deg, #111827, #0f172a);
+      color: var(--text);
+      border: 2px solid var(--accent);
+      border-radius: 16px;
+      box-shadow: 0 25px 80px rgba(0,0,0,0.55), 0 0 0 6px rgba(239,68,68,0.25);
+      position: relative;
+      overflow: hidden;
+    }
+    .pulse {
+      position:absolute; inset: -2px;
+      border-radius: 16px;
+      box-shadow: 0 0 0 0 rgba(239,68,68,0.45);
+      animation: pulse 1.8s infinite;
+      pointer-events:none;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.45); }
+      70% { box-shadow: 0 0 0 14px rgba(239,68,68,0); }
+      100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+    }
+    .header {
+      display:flex; gap:12px; align-items:center;
+      padding:18px 20px; background: #1f2937; border-bottom:1px solid #374151;
+    }
+    .badge {
+      display:inline-flex; align-items:center; gap:8px;
+      font-weight:800; text-transform:uppercase; letter-spacing:.08em;
+      color:#fff; background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      padding:8px 12px; border-radius:999px; font-size:12px;
+    }
+    .title {
+      margin: 6px 0 0 0; font-size:20px; font-weight:700; line-height:1.2;
+    }
+    .body {
+      padding: 18px 20px 6px 20px; line-height:1.65; font-size:15px; color:#e5e7eb;
+    }
+    .note {
+      margin-top:8px; color: var(--muted); font-size:13px;
+    }
+    .controls {
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+      padding: 14px 20px 20px 20px;
+    }
+    select {
+      background:#0b1220; color:var(--text);
+      border:1px solid #334155; border-radius:10px; padding:10px 12px; font-size:14px;
+      outline: none;
+    }
+    button, a.btn {
+      appearance:none; border:none; cursor:pointer; text-decoration:none;
+      border-radius:12px; padding:12px 16px; font-weight:700; font-size:14px;
+    }
+    .btn-primary {
+      background: var(--accent); color:white;
+    }
+    .btn-secondary {
+      background: #111827; color:#e5e7eb; border:1px solid #374151;
+    }
+    .btn-primary:focus, .btn-secondary:focus, select:focus {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+    }
+    .list {
+      margin:12px 0 0 0; padding-left:18px; font-size:14px;
+    }
+    .list li { margin: 4px 0; }
+    .topline {
+      font-size:14px; color:#fca5a5; margin:6px 0 0 0;
+    }
+    .icon {
+      font-size:22px; line-height:1;
+    }
+    @media (max-width:420px){
+      .title { font-size:18px; }
+      .body { font-size:14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap" role="dialog" aria-modal="true" aria-labelledby="warn-title" aria-describedby="warn-desc">
+    <div class="card" id="card">
+      <div class="pulse"></div>
+
+      <div class="header">
+        <span class="icon" aria-hidden="true">⚠️</span>
+        <div>
+          <span class="badge">Security Notice</span>
+          <div id="warn-title" class="title">This website is NOT a real trading platform.</div>
+          <div class="topline" id="warn-sub">If you reached this page via an offer or message, you may have been targeted by a scam.</div>
+        </div>
+      </div>
+
+      <div class="body" id="warn-desc">
+        <p id="p1">
+          Warning: This site is a decoy. It does not provide investment services and no real trading occurs here.
+          If you were instructed to log in, <strong>stop immediately</strong>.
+        </p>
+        <ul class="list" id="ul1">
+          <li>Do not send money or share personal/financial information.</li>
+          <li>Report the source that led you here (social post, chat, SMS, ad).</li>
+          <li>Consider contacting your bank/card issuer if you shared details.</li>
+        </ul>
+        <p class="note" id="p2">
+          This warning is shown to protect you. Choosing “I Understand” will close this message.
+        </p>
+      </div>
+
+      <div class="controls">
+        <label for="lang" class="sr-only">Language</label>
+        <select id="lang">
+          <option value="en" selected>English</option>
+          <option value="ms">Bahasa Melayu</option>
+          <option value="id">Bahasa Indonesia</option>
+          <option value="zh">简体中文</option>
+          <option value="ar">العربية</option>
+        </select>
+
+        <button class="btn-primary" id="closeBtn" type="button">I Understand</button>
+        <a class="btn btn-secondary" id="exitBtn" href="https://www.google.com/" rel="noopener">Exit site</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Simple language pack
+    const T = {
+      en: {
+        title: "This website is NOT a real trading platform.",
+        sub: "If you reached this page via an offer or message, you may have been targeted by a scam.",
+        p1: "Warning: This site is a decoy. It does not provide investment services and no real trading occurs here. If you were instructed to log in, stop immediately.",
+        li: [
+          "Do not send money or share personal/financial information.",
+          "Report the source that led you here (social post, chat, SMS, ad).",
+          "Consider contacting your bank/card issuer if you shared details."
+        ],
+        p2: "This warning is shown to protect you. Choosing “I Understand” will close this message.",
+        ok: "I Understand",
+        exit: "Exit site"
+      },
+      ms: {
+        title: "Laman web ini BUKAN platform dagangan sebenar.",
+        sub: "Jika anda tiba di sini melalui tawaran atau mesej, anda mungkin menjadi sasaran penipuan.",
+        p1: "Amaran: Laman ini hanyalah olokan. Tiada perkhidmatan pelaburan atau dagangan sebenar di sini. Jika anda diminta untuk log masuk, hentikan segera.",
+        li: [
+          "Jangan hantar wang atau kongsi maklumat peribadi/kewangan.",
+          "Laporkan sumber yang membawa anda ke sini (media sosial, chat, SMS, iklan).",
+          "Pertimbangkan untuk hubungi bank/pengeluar kad jika anda berkongsi butiran."
+        ],
+        p2: "Amaran ini dipaparkan untuk melindungi anda. Pilih “Saya Faham” untuk tutup mesej ini.",
+        ok: "Saya Faham",
+        exit: "Keluar"
+      },
+      id: {
+        title: "Situs ini BUKAN platform trading yang nyata.",
+        sub: "Jika Anda sampai di sini melalui tawaran atau pesan, Anda mungkin menjadi target penipuan.",
+        p1: "Peringatan: Situs ini hanyalah umpan. Tidak ada layanan investasi atau trading sungguhan di sini. Jika Anda diminta login, segera hentikan.",
+        li: [
+          "Jangan kirim uang atau bagikan data pribadi/keuangan.",
+          "Laporkan sumber yang mengarahkan Anda ke sini (sosmed, chat, SMS, iklan).",
+          "Pertimbangkan menghubungi bank/penerbit kartu jika Anda sudah berbagi data."
+        ],
+        p2: "Peringatan ini ditampilkan untuk melindungi Anda. Pilih “Saya Paham” untuk menutup pesan ini.",
+        ok: "Saya Paham",
+        exit: "Keluar"
+      },
+      zh: {
+        title: "本网站并非真实的交易平台。",
+        sub: "如果您通过广告或消息来到这里，您可能正遭遇诈骗。",
+        p1: "警告：本网站为诱导页面。这里不提供投资服务，也不存在真实交易。如果有人让您登录，请立即停止。",
+        li: [
+          "不要转账或提供个人/财务信息。",
+          "举报将您引至此处的来源（社交媒体、聊天、短信、广告）。",
+          "若已泄露信息，请考虑联系银行或发卡机构。"
+        ],
+        p2: "此警示旨在保护您。点击“我已了解”将关闭本消息。",
+        ok: "我已了解",
+        exit: "离开网站"
+      },
+      ar: {
+        title: "هذا الموقع ليس منصة تداول حقيقية.",
+        sub: "إذا وصلت إلى هذه الصفحة عبر عرض أو رسالة، فقد تكون هدفًا لعملية احتيال.",
+        p1: "تحذير: هذا الموقع طُعم. لا يقدم خدمات استثمار ولا تتم أي عمليات تداول حقيقية هنا. إذا طُلب منك تسجيل الدخول، فتوقف فورًا.",
+        li: [
+          "لا ترسل أي أموال ولا تشارك معلوماتك الشخصية/المالية.",
+          "أبلغ عن المصدر الذي أوصلك إلى هنا (منشور، محادثة، رسالة، إعلان).",
+          "فكّر في التواصل مع بنكك/مصدر بطاقتك إن شاركت معلومات."
+        ],
+        p2: "يُعرض هذا التحذير لحمايتك. سيؤدي اختيار “فهمت” إلى إغلاق هذه الرسالة.",
+        ok: "فهمت",
+        exit: "الخروج"
+      }
+    };
+
+    const els = {
+      title: document.getElementById('warn-title'),
+      sub: document.getElementById('warn-sub'),
+      p1: document.getElementById('p1'),
+      ul1: document.getElementById('ul1'),
+      p2: document.getElementById('p2'),
+      ok: document.getElementById('closeBtn'),
+      exit: document.getElementById('exitBtn'),
+      lang: document.getElementById('lang'),
+      card: document.getElementById('card')
+    };
+
+    function applyLang(code){
+      const L = T[code] || T.en;
+      els.title.textContent = L.title;
+      els.sub.textContent = L.sub;
+      els.p1.textContent = L.p1;
+      els.ul1.innerHTML = L.li.map(x => `<li>${x}</li>`).join('');
+      els.p2.textContent = L.p2;
+      els.ok.textContent = L.ok;
+      els.exit.textContent = L.exit;
+      document.documentElement.dir = (code === 'ar') ? 'rtl' : 'ltr';
+    }
+
+    els.lang.addEventListener('change', e => applyLang(e.target.value));
+    applyLang('en');
+
+    // Close behavior (the parent page will remove the overlay)
+    els.ok.addEventListener('click', () => {
+      // Tell parent to close
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'POPUP_CLOSE' }, '*');
+      }
+    });
+
+    // Focus management for accessibility
+    window.setTimeout(() => {
+      els.ok.focus();
+    }, 50);
+  </script>
+</body>
+</html>
