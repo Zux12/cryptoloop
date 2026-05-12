@@ -223,10 +223,40 @@
     <h2 class="text-xl font-semibold mb-4">💰 Buy Crypto</h2>
     <form id="buy-form" class="space-y-3">
       <input type="text" id="buy-symbol" placeholder="Symbol (e.g. BTC)" class="w-full p-2 rounded bg-gray-800 border border-gray-600">
-      <input type="number" id="buy-amount" placeholder="Amount in USD" class="w-full p-2 rounded bg-gray-800 border border-gray-600">
-      <button id="buy-submit" type="submit" disabled class="bg-green-600 opacity-50 px-4 py-2 rounded font-semibold">
-        Submit
-      </button>
+<input type="number" id="buy-amount" placeholder="Amount in USD" class="w-full p-2 rounded bg-gray-800 border border-gray-600">
+
+<div class="bg-gray-800 border border-gray-700 rounded-xl p-4 space-y-3">
+  <div class="text-sm text-gray-300">
+    Payment Method: <span class="text-green-400 font-semibold">Transak / BTC</span>
+  </div>
+
+  <div class="text-sm text-gray-300">
+    BTC Receiving Address:
+  </div>
+
+  <input
+    id="btc-wallet-address"
+    type="text"
+    readonly
+    value="bc1q20d46zrs7d3a685q5myyv4chnump2p4q7r49zh"
+    class="w-full p-2 rounded bg-gray-900 border border-gray-600 text-xs"
+  >
+
+  <input
+    id="payment-reference"
+    type="text"
+    placeholder="Paste Transak Order ID or BTC Transaction Hash"
+    class="w-full p-2 rounded bg-gray-900 border border-gray-600"
+  >
+
+  <p class="text-xs text-yellow-300">
+    Please complete payment through Transak first, then paste the Order ID or BTC transaction hash before submitting.
+  </p>
+</div>
+
+<button id="buy-submit" type="submit" disabled class="bg-green-600 opacity-50 px-4 py-2 rounded font-semibold">
+  Submit Payment for Admin Approval
+</button>
       
     </form>
     <div id="buy-result" class="mt-3 text-sm"></div>
