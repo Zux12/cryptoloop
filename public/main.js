@@ -1418,10 +1418,7 @@ body: JSON.stringify({
   }
 
 
-const transakBtn = document.getElementById('open-transak-btn');
-if (transakBtn) {
-  transakBtn.addEventListener('click', openTransakCheckout);
-}
+
 
   function checkBuyFormValidity() {
     const symbol = document.getElementById("buy-symbol").value.trim();
@@ -1660,6 +1657,12 @@ window.onload = function () {
   renderApprovedBuysForSelling();
   clearAndBindBuyFormOnce();
 
+
+  const transakBtn = document.getElementById('open-transak-btn');
+if (transakBtn) {
+  transakBtn.addEventListener('click', openTransakCheckout);
+}
+  
   var buySymEl = document.getElementById('buy-symbol');
   var buyAmtEl = document.getElementById('buy-amount');
   if (buySymEl) buySymEl.addEventListener('input', checkBuyFormValidity);
