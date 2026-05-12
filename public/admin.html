@@ -113,8 +113,11 @@
               <th class="th">Symbol</th>
               <th class="th">USD</th>
               <th class="th">Amount</th>
-              <th class="th">Timestamp</th>
-              <th class="th text-center">Actions</th>
+<th class="th">Timestamp</th>
+<th class="th">Payment</th>
+<th class="th">Tx / Order ID</th>
+<th class="th text-center">Actions</th>
+              
             </tr>
           </thead>
           <tbody id="admin-buy-request-body"></tbody>
@@ -325,7 +328,7 @@ async function fetchRequests(){
   const body = $('#admin-buy-request-body');
   if(!r.ok){ return setErrorRow('#admin-buy-request-body', 6, `/api/admin/buy-requests ${r.status}`); }
   const rows = Array.isArray(r.data) ? r.data : [];
-  if(!rows.length){ body.innerHTML = `<tr><td class="td text-center text-gray-400" colspan="6">No pending buy requests</td></tr>`; return; }
+  if(!rows.length){ body.innerHTML = `<tr><td class="td text-center text-gray-400" colspan="8">No pending buy requests</td></tr>`; return; }
 
   body.innerHTML = rows.map(req => `
     <tr class="row">
@@ -333,8 +336,15 @@ async function fetchRequests(){
       <td class="td">${req.symbol}</td>
       <td class="td">${fmtMoney(req.usd)}</td>
       <td class="td">${(+req.amount).toFixed(6)}</td>
-      <td class="td">${fmtDate(req.timestamp)}</td>
-      <td class="td text-center">
+<td class="td">${fmtDate(req.timestamp)}</td>
+<td class="td">
+  ${req.paymentMethod || 'Manual'}<br>
+  <span class="text-xs text-gray-400">${req.network || '-'}</span>
+</td>
+<td class="td break-all text-xs">
+  ${req.transakOrderId || req.txHash || '-'}
+</td>
+<td class="td text-center">
         <div class="flex items-center justify-center gap-2">
           <button onclick="handleBuyAction('${req._id}', 'approve')" class="btn btn-primary px-2 py-1 text-xs">✅ Approve</button>
           <button onclick="handleBuyAction('${req._id}', 'reject')" class="btn btn-danger px-2 py-1 text-xs">❌ Reject</button>
