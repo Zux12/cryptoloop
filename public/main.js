@@ -1582,6 +1582,7 @@ function openTransakCheckout() {
 
   const params = new URLSearchParams({
     apiKey: '23f683bf-3678-49f2-a78e-c81d07733cf7',
+    referrerDomain: window.location.hostname,
     productsAvailed: 'BUY',
     cryptoCurrencyCode: 'BTC',
     fiatCurrency: 'USD',
@@ -1593,7 +1594,7 @@ function openTransakCheckout() {
     partnerOrderId: partnerOrderId
   });
 
-  window.open(`https://global.transak.com/?${params.toString()}`, '_blank');
+window.open(`https://global-stg.transak.com/?${params.toString()}`, '_blank');
 }
 
 
