@@ -1587,7 +1587,6 @@ function openTransakCheckout() {
     cryptoCurrencyCode: 'BTC',
     fiatCurrency: 'USD',
     fiatAmount: String(usd),
-    network: 'bitcoin',
     walletAddress: walletAddress,
     disableWalletAddressForm: 'true',
     email: userEmail,
