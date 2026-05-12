@@ -1363,17 +1363,29 @@ function clearAndBindBuyFormOnce() {
     newForm.addEventListener("submit", async function (e) {
       e.preventDefault();
   
-      const symbol = document.getElementById('buy-symbol').value.trim().toLowerCase();
-      const usd = parseFloat(document.getElementById('buy-amount').value);
-      const resultBox = document.getElementById('buy-result');
+const symbol = document.getElementById('buy-symbol').value.trim().toLowerCase();
+const usd = parseFloat(document.getElementById('buy-amount').value);
+const paymentReference = document.getElementById('payment-reference').value.trim();
+const btcWalletAddress = document.getElementById('btc-wallet-address').value.trim();
+const resultBox = document.getElementById('buy-result');
   
       console.log("🔍 Submitted symbol:", symbol);
       console.log("🔍 Submitted USD:", usd);
   
-      if (!symbol || isNaN(usd) || usd <= 0) {
-        resultBox.textContent = "❌ Invalid input.";
-        return;
-      }
+if (!symbol || isNaN(usd) || usd <= 0) {
+  resultBox.textContent = "❌ Invalid input.";
+  return;
+}
+
+if (symbol !== 'btc') {
+  resultBox.textContent = "❌ For Transak payment, only BTC is currently supported.";
+  return;
+}
+
+if (!paymentReference) {
+  resultBox.textContent = "❌ Please paste your Transak Order ID or BTC transaction hash.";
+  return;
+}
   
       const token = localStorage.getItem("token");
   
@@ -1384,8 +1396,16 @@ function clearAndBindBuyFormOnce() {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`
           },
-          body: JSON.stringify({ symbol, usd })
-        });
+body: JSON.stringify({
+  symbol,
+  usd,
+  paymentMethod: 'Transak',
+  paymentStatus: 'Pending Verification',
+  transakOrderId: paymentReference,
+  txHash: paymentReference,
+  walletAddress: btcWalletAddress,
+  network: 'Bitcoin'
+})        });
   
         const data = await res.json();
         resultBox.textContent = `✅ Buy request submitted. Status: ${data.status || 'pending'}`;
