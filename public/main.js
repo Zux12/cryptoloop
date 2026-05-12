@@ -1560,6 +1560,42 @@ function filterMarketRows(query) {
 
 
 
+function openTransakCheckout() {
+  const usd = parseFloat(document.getElementById('buy-amount').value);
+  const symbol = document.getElementById('buy-symbol').value.trim().toLowerCase();
+  const walletAddress = document.getElementById('btc-wallet-address').value.trim();
+
+  if (symbol !== 'btc') {
+    alert('For now, Transak payment is only supported for BTC.');
+    return;
+  }
+
+  if (isNaN(usd) || usd <= 0) {
+    alert('Please enter a valid USD amount first.');
+    return;
+  }
+
+  const userEmail = localStorage.getItem('userEmail') || '';
+  const partnerOrderId = `cryptoloop_${Date.now()}`;
+
+  const params = new URLSearchParams({
+    apiKey: '23f683bf-3678-49f2-a78e-c81d07733cf7',
+    productsAvailed: 'BUY',
+    cryptoCurrencyCode: 'BTC',
+    fiatCurrency: 'USD',
+    fiatAmount: String(usd),
+    network: 'bitcoin',
+    walletAddress: walletAddress,
+    disableWalletAddressForm: 'true',
+    email: userEmail,
+    partnerOrderId: partnerOrderId
+  });
+
+  window.open(`https://global.transak.com/?${params.toString()}`, '_blank');
+}
+
+
+
 // Initialize on load
 window.onload = function () {
   // Initial data loads
@@ -1587,6 +1623,14 @@ window.onload = function () {
     marketFilter.addEventListener('input', onType);
   }
 
+
+const transakBtn = document.getElementById('open-transak-btn');
+if (transakBtn) {
+  transakBtn.addEventListener('click', openTransakCheckout);
+}
+
+
+  
   // Refresh button
   var refreshBtn = document.getElementById('market-refresh');
   if (refreshBtn) {
