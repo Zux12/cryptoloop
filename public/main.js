@@ -1416,7 +1416,12 @@ body: JSON.stringify({
       }
     });
   }
-  
+
+
+const transakBtn = document.getElementById('open-transak-btn');
+if (transakBtn) {
+  transakBtn.addEventListener('click', openTransakCheckout);
+}
 
   function checkBuyFormValidity() {
     const symbol = document.getElementById("buy-symbol").value.trim();
@@ -1624,10 +1629,7 @@ window.onload = function () {
   }
 
 
-const transakBtn = document.getElementById('open-transak-btn');
-if (transakBtn) {
-  transakBtn.addEventListener('click', openTransakCheckout);
-}
+
 
 
   
