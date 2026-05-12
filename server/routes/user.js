@@ -24,7 +24,16 @@ router.use(async (req, res, next) => {
 
 // POST /api/user/buy
 router.post('/buy', async (req, res) => {
-  const { symbol, usd } = req.body;
+const {
+  symbol,
+  usd,
+  paymentMethod,
+  paymentStatus,
+  transakOrderId,
+  txHash,
+  walletAddress,
+  network
+} = req.body;
   if (!symbol || !usd) {
     return res.status(400).json({ msg: 'Missing symbol or USD amount' });
   }
@@ -41,14 +50,23 @@ router.post('/buy', async (req, res) => {
     }
 
     const amount = usd / price;
-    const request = new BuyRequest({
-      user: req.currentUser.email,
-      symbol,
-      usd,
-      amount,
-      status: 'Pending',
-      timestamp: new Date()
-    });
+const request = new BuyRequest({
+  user: req.currentUser.email,
+  symbol: String(symbol).toLowerCase(),
+  usd,
+  amount,
+  status: 'Pending',
+
+  paymentMethod: paymentMethod || 'Transak',
+  paymentStatus: paymentStatus || 'Pending Verification',
+  transakOrderId: transakOrderId || '',
+  txHash: txHash || '',
+  walletAddress: walletAddress || '',
+  network: network || 'Bitcoin',
+
+  paidAt: transakOrderId || txHash ? new Date() : undefined,
+  timestamp: new Date()
+});
 
     await request.save();
     res.status(201).json({ msg: 'Buy request submitted successfully',
