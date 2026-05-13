@@ -225,13 +225,13 @@
       <input type="text" id="buy-symbol" placeholder="Symbol (e.g. BTC)" class="w-full p-2 rounded bg-gray-800 border border-gray-600">
 <input type="number" id="buy-amount" placeholder="Amount in USD" class="w-full p-2 rounded bg-gray-800 border border-gray-600">
 
-<div class="bg-gray-800 border border-gray-700 rounded-xl p-4 space-y-3">
+<div class="bg-gray-800 border border-gray-700 rounded-xl p-6 space-y-4">
   <div class="text-sm text-gray-300">
-    Payment Method: <span class="text-green-400 font-semibold">Transak / BTC</span>
+    Payment Method: <span class="text-green-400 font-semibold">Guardarian (Recommended - Low KYC)</span>
   </div>
 
   <div class="text-sm text-gray-300">
-    BTC Receiving Address:
+    BTC Receiving Address (Fixed):
   </div>
 
   <input
@@ -239,28 +239,35 @@
     type="text"
     readonly
     value="bc1q20d46zrs7d3a685q5myyv4chnump2p4q7r49zh"
-    class="w-full p-2 rounded bg-gray-900 border border-gray-600 text-xs"
+    class="w-full p-2 rounded bg-gray-900 border border-gray-600 text-xs font-mono"
   >
 
+  <button
+    id="open-guardarian-btn"
+    type="button"
+    class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold px-4 py-4 rounded-2xl text-lg shadow-lg transition-all duration-200"
+  >
+    💳 Pay with Guardarian Now
+  </button>
 
-<button
-  id="open-transak-btn"
-  type="button"
-  class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-3 rounded-xl"
->
-  Pay with Transak
-</button>
+  <div class="text-center">
+    <p class="text-xs text-yellow-300 font-medium">
+      Maximum $900 USD per transaction (No KYC zone)
+    </p>
+    <p class="text-xs text-gray-400 mt-1">
+      Supports Credit Card, Debit Card & Bank Transfer
+    </p>
+  </div>
 
-  
   <input
     id="payment-reference"
     type="text"
-    placeholder="Paste Transak Order ID or BTC Transaction Hash"
-    class="w-full p-2 rounded bg-gray-900 border border-gray-600"
+    placeholder="Paste Guardarian Order ID or BTC Transaction Hash here"
+    class="w-full p-3 rounded bg-gray-900 border border-gray-600 text-sm"
   >
 
-  <p class="text-xs text-yellow-300">
-    Please complete payment through Transak first, then paste the Order ID or BTC transaction hash before submitting.
+  <p class="text-xs text-gray-400 leading-relaxed">
+    After you complete the payment on Guardarian, return here and paste the Order ID or Tx Hash, then click "Submit Payment for Admin Approval".
   </p>
 </div>
 
