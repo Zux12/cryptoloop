@@ -1562,38 +1562,63 @@ function filterMarketRows(query) {
 
 
 
-function openTransakCheckout() {
-  const usd = parseFloat(document.getElementById('buy-amount').value);
-  const symbol = document.getElementById('buy-symbol').value.trim().toLowerCase();
+async function openTransakCheckout() {
+  const usdAmount = parseFloat(document.getElementById('buy-amount').value);
+  const symbol = (document.getElementById('buy-symbol').value || 'btc').trim().toUpperCase();
   const walletAddress = document.getElementById('btc-wallet-address').value.trim();
-
-  if (symbol !== 'btc') {
-    alert('For now, Transak payment is only supported for BTC.');
-    return;
-  }
-
-  if (isNaN(usd) || usd <= 0) {
-    alert('Please enter a valid USD amount first.');
-    return;
-  }
-
   const userEmail = localStorage.getItem('userEmail') || '';
-  const partnerOrderId = `cryptoloop_${Date.now()}`;
 
-  const params = new URLSearchParams({
-    apiKey: '23f683bf-3678-49f2-a78e-c81d07733cf7',
-    referrerDomain: window.location.hostname,
-    productsAvailed: 'BUY',
-    cryptoCurrencyCode: 'BTC',
-    fiatCurrency: 'USD',
-    fiatAmount: String(usd),
-    walletAddress: walletAddress,
-    disableWalletAddressForm: 'true',
-    email: userEmail,
-    partnerOrderId: partnerOrderId
-  });
+  if (symbol !== 'BTC') {
+    alert('Currently only BTC is supported via Transak.');
+    return;
+  }
+  if (isNaN(usdAmount) || usdAmount <= 0) {
+    alert('Please enter a valid amount in USD.');
+    return;
+  }
 
-window.open(`https://global-stg.transak.com/?${params.toString()}`, '_blank');
+  try {
+    // Optional: Call your backend to create a secure widget URL (Recommended)
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/user/transak-widget', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        fiatAmount: usdAmount,
+        fiatCurrency: 'USD',        // or 'MYR'
+        cryptoCurrency: 'BTC',
+        walletAddress: walletAddress,
+        email: userEmail,
+        partnerOrderId: `cl_${Date.now()}`
+      })
+    });
+
+    const data = await res.json();
+    
+    if (data.widgetUrl) {
+      window.open(data.widgetUrl, '_blank');
+    } else {
+      // Fallback direct URL
+      const params = new URLSearchParams({
+        apiKey: '23f683bf-3678-49f2-a78e-c81d07733cf7', // ← Change to production key later
+        productsAvailed: 'BUY',
+        cryptoCurrencyCode: 'BTC',
+        fiatCurrency: 'MYR',           // Better for Malaysian users
+        fiatAmount: usdAmount,
+        walletAddress: walletAddress,
+        disableWalletAddressForm: 'true',
+        email: userEmail,
+        partnerOrderId: `cl_${Date.now()}`
+      });
+      window.open(`https://global.transak.com/?${params.toString()}`, '_blank');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Failed to open payment page. Please try again.');
+  }
 }
 
 
