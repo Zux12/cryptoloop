@@ -142,6 +142,36 @@ router.get('/approved-buys', async (req, res) => {
   }
 });
 
+
+// POST /api/user/transak-widget
+router.post('/transak-widget', requireAuth, async (req, res) => {
+  try {
+    const { fiatAmount, fiatCurrency, cryptoCurrency, walletAddress, email, partnerOrderId } = req.body;
+
+    // Optional: Save pending BuyRequest here
+    const buyReq = new BuyRequest({
+      user: req.user.uid,
+      symbol: cryptoCurrency.toLowerCase(),
+      usd: fiatAmount,
+      amount: 0, // will be updated later
+      paymentMethod: 'Transak',
+      walletAddress,
+      transakOrderId: partnerOrderId
+    });
+    await buyReq.save();
+
+    // TODO: Call Transak Create Widget URL API (more secure)
+    // For now, return direct URL
+    res.json({ 
+      success: true,
+      widgetUrl: null, // implement later
+      orderId: partnerOrderId 
+    });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
 // POST /api/user/sell
 router.post('/sell', async (req, res) => {
   const { symbol, amount } = req.body;
