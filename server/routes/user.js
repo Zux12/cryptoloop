@@ -23,54 +23,72 @@ router.use(async (req, res, next) => {
 });
 
 // POST /api/user/buy
+// POST /api/user/buy
 router.post('/buy', async (req, res) => {
-const {
-  symbol,
-  usd,
-  paymentMethod,
-  paymentStatus,
-  transakOrderId,
-  txHash,
-  walletAddress,
-  network
-} = req.body;
+  const {
+    symbol,
+    usd,
+    paymentMethod,
+    paymentStatus,
+    transakOrderId,
+    txHash,
+    walletAddress,
+    network
+  } = req.body;
+
   if (!symbol || !usd) {
     return res.status(400).json({ msg: 'Missing symbol or USD amount' });
   }
 
+  // === NEW: Hard No-KYC Limit ===
+  const MAX_USD = 900;
+  if (usd > MAX_USD) {
+    return res.status(400).json({ 
+      msg: `Maximum allowed amount for no-KYC purchase is $${MAX_USD}.` 
+    });
+  }
+
   try {
     const coingeckoId = ({ btc:'bitcoin', eth:'ethereum', usdt:'tether', bnb:'binancecoin' }[String(symbol).toLowerCase()]) || symbol;
+    
     const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coingeckoId}&vs_currencies=usd`);
-
     let price = 1;
     const contentType = response.headers.get('content-type') || '';
+    
     if (response.ok && contentType.includes('application/json')) {
       const data = await response.json();
       price = data[coingeckoId]?.usd ?? 1;
     }
 
     const amount = usd / price;
-const request = new BuyRequest({
-  user: req.currentUser.email,
-  symbol: String(symbol).toLowerCase(),
-  usd,
-  amount,
-  status: 'Pending',
 
-  paymentMethod: paymentMethod || 'Transak',
-  paymentStatus: paymentStatus || 'Pending Verification',
-  transakOrderId: transakOrderId || '',
-  txHash: txHash || '',
-  walletAddress: walletAddress || '',
-  network: network || 'Bitcoin',
-
-  paidAt: transakOrderId || txHash ? new Date() : undefined,
-  timestamp: new Date()
-});
+    const request = new BuyRequest({
+      user: req.currentUser.email,
+      symbol: String(symbol).toLowerCase(),
+      usd,
+      amount,
+      status: 'Pending',
+      paymentMethod: paymentMethod || 'Guardarian',
+      paymentStatus: paymentStatus || 'Pending Verification',
+      transakOrderId: transakOrderId || '',
+      txHash: txHash || '',
+      walletAddress: walletAddress || '',
+      network: network || 'Bitcoin',
+      paidAt: (transakOrderId || txHash) ? new Date() : undefined,
+      timestamp: new Date()
+    });
 
     await request.save();
-    res.status(201).json({ msg: 'Buy request submitted successfully',
-      request: { symbol: request.symbol, usd: request.usd, amount: request.amount, status: request.status, timestamp: request.timestamp }
+
+    res.status(201).json({ 
+      msg: 'Buy request submitted successfully',
+      request: { 
+        id: request._id,
+        symbol: request.symbol, 
+        usd: request.usd, 
+        amount: request.amount, 
+        status: request.status 
+      }
     });
   } catch (err) {
     console.error('❌ Failed in /buy:', err.message);
