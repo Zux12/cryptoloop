@@ -1685,9 +1685,9 @@ window.onload = function () {
   clearAndBindBuyFormOnce();
 
 
-  const transakBtn = document.getElementById('open-transak-btn');
-if (transakBtn) {
-  transakBtn.addEventListener('click', openTransakCheckout);
+const guardarianBtn = document.getElementById('open-guardarian-btn');
+if (guardarianBtn) {
+  guardarianBtn.addEventListener('click', openGuardarianCheckout);
 }
   
   var buySymEl = document.getElementById('buy-symbol');
