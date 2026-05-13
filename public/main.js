@@ -1562,62 +1562,64 @@ function filterMarketRows(query) {
 
 
 
-async function openTransakCheckout() {
+async function openGuardarianCheckout() {
   const usdAmount = parseFloat(document.getElementById('buy-amount').value);
-  const symbol = (document.getElementById('buy-symbol').value || 'btc').trim().toUpperCase();
+  const symbolEl = document.getElementById('buy-symbol');
+  const symbol = (symbolEl ? symbolEl.value.trim().toUpperCase() : 'BTC');
   const walletAddress = document.getElementById('btc-wallet-address').value.trim();
   const userEmail = localStorage.getItem('userEmail') || '';
 
-  if (symbol !== 'BTC') {
-    alert('Currently only BTC is supported via Transak.');
+  // Hard cap for no-KYC
+  const MAX_USD = 900;
+  if (isNaN(usdAmount) || usdAmount <= 0) {
+    alert('Please enter a valid amount.');
     return;
   }
-  if (isNaN(usdAmount) || usdAmount <= 0) {
-    alert('Please enter a valid amount in USD.');
+  if (usdAmount > MAX_USD) {
+    alert(`Maximum amount for no-KYC is $${MAX_USD}. Please reduce the amount.`);
+    return;
+  }
+  if (symbol !== 'BTC') {
+    alert('Currently only BTC is supported with Guardarian in this setup.');
     return;
   }
 
   try {
-    // Optional: Call your backend to create a secure widget URL (Recommended)
     const token = localStorage.getItem('token');
-    const res = await fetch('/api/user/transak-widget', {
+
+    // 1. Create BuyRequest record first
+    const res = await fetch('/api/user/buy', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        fiatAmount: usdAmount,
-        fiatCurrency: 'USD',        // or 'MYR'
-        cryptoCurrency: 'BTC',
+        symbol: 'btc',
+        usd: usdAmount,
+        paymentMethod: 'Guardarian',
+        paymentStatus: 'Pending Verification',
         walletAddress: walletAddress,
-        email: userEmail,
-        partnerOrderId: `cl_${Date.now()}`
+        network: 'Bitcoin'
       })
     });
 
     const data = await res.json();
-    
-    if (data.widgetUrl) {
-      window.open(data.widgetUrl, '_blank');
-    } else {
-      // Fallback direct URL
-      const params = new URLSearchParams({
-        apiKey: '23f683bf-3678-49f2-a78e-c81d07733cf7', // ← Change to production key later
-        productsAvailed: 'BUY',
-        cryptoCurrencyCode: 'BTC',
-        fiatCurrency: 'MYR',           // Better for Malaysian users
-        fiatAmount: usdAmount,
-        walletAddress: walletAddress,
-        disableWalletAddressForm: 'true',
-        email: userEmail,
-        partnerOrderId: `cl_${Date.now()}`
-      });
-      window.open(`https://global.transak.com/?${params.toString()}`, '_blank');
+
+    if (!res.ok) {
+      throw new Error(data.msg || 'Failed to create order');
     }
+
+    // 2. Open Guardarian (you will need to replace YOUR_PARTNER_KEY later)
+    const guardarianUrl = `https://guardarian.com/buy?partner=your_partner_id_here&amount=${usdAmount}&currency=USD&crypto=BTC&address=${encodeURIComponent(walletAddress)}&email=${encodeURIComponent(userEmail)}`;
+
+    window.open(guardarianUrl, '_blank');
+
+    alert('Buy request created. Guardarian page opened in new tab.\n\nAfter payment, return here and paste the Order ID.');
+
   } catch (err) {
     console.error(err);
-    alert('Failed to open payment page. Please try again.');
+    alert('Error: ' + (err.message || 'Failed to open payment'));
   }
 }
 
